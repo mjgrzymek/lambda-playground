@@ -14,7 +14,10 @@ export const tapply = (func: Term, arg: Term): applyTerm => ({
   func,
   arg,
 });
-export type Term = varTerm | lambdaTerm | applyTerm;
+type Marker = "used-body" | "used-argument"; // I will regret this
+export type Term = (varTerm | lambdaTerm | applyTerm) & {
+  marker?: Marker | undefined;
+};
 export const termElim = <T>(
   t: Term,
   fv: (t: varTerm) => T,
@@ -70,16 +73,6 @@ const reduce = (t: Term): Term =>
   !(t.type === "apply" && t.func.type === "lambda")
     ? bad("reduce at invalid point")
     : rewrite(t.func.body, t.func.variable, t.arg);
-
-type OnPath = string | null;
-
-//export const eatPath = (direction: "l" | "r" | "d", onPath: OnPath): OnPath => {
-//if (onPath === direction) return "";
-//if (onPath === null) return null;
-//if (onPath.length === 0) return null;
-//if (onPath[0] === direction) return onPath.slice(1);
-//return null;
-//};
 
 export const reduceAt = (
   term: Term,

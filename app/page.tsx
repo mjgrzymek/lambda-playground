@@ -15,6 +15,7 @@ import {
   naiveBetaNormalize,
   normalStrategyRedex,
 } from "./term";
+import { Style, LangInfo, Lang, langData } from "./languages";
 
 /*
 classes for rules:
@@ -24,6 +25,7 @@ classes for rules:
   .application-container
   .abstraction-handle
   .output-row-container
+  .used-lambda
 
 also .var-${name} , .abstr-${name} for each variable name
 */
@@ -111,7 +113,7 @@ const alpha = tapply(tlambda("x", tlambda("y", tvar("x"))), tvar("y"));
 const alphaClosed = tlambda("y", alpha);
 const alphaBug = tapply(tapply(alphaClosed, tvar("a")), tvar("b"));
 
-const displayVariable = (name: string, style: Style, className = "") => {
+function displayVariable(name: string, style: Style, className = "") {
   if (style === Style.Code) {
     return <span className={`var-${name} ${className}`}>{name}</span>;
   }
@@ -124,7 +126,7 @@ const displayVariable = (name: string, style: Style, className = "") => {
       {[...sub].map((d) => subscripts[Number(d)]).join("")}
     </span>
   );
-};
+}
 
 function toMathematicalItalic(text: string): string {
   return Array.from(text)
@@ -147,8 +149,8 @@ function toMathematicalItalic(text: string): string {
     .join("");
 }
 
-const parenthesizeIf = (b: boolean, t: JSX.Element) =>
-  b ? (
+function parenthesizeIf(b: boolean, t: JSX.Element) {
+  return b ? (
     <span className="paren-container">
       <span className="p-[0.07rem] [.paren-container:has(>&:hover)>&]:text-red-600">
         (
@@ -162,59 +164,7 @@ const parenthesizeIf = (b: boolean, t: JSX.Element) =>
     // for :has()
     <span className="paren-container">{t}</span>
   );
-
-const mathItalicSymbolLambda = "𝜆";
-
-enum Style {
-  Math = "Math",
-  Code = "Code",
 }
-
-enum Lang {
-  Python = "Python",
-  JavaScript = "JavaScript",
-  Tex = "Tex",
-}
-
-type LangInfo = {
-  lambdaSymbol: string;
-  connector: string;
-  multiArg: boolean;
-  style: Style;
-  image: string;
-  parenthesizeArg: boolean;
-  abstractionHandle: "lambda-symbol" | "connector";
-};
-
-const langData: { [key in Lang]: LangInfo } = {
-  [Lang.Python]: {
-    lambdaSymbol: "lambda ",
-    connector: ": ",
-    multiArg: false,
-    style: Style.Code,
-    image: "/python-logo-only.png",
-    parenthesizeArg: true,
-    abstractionHandle: "lambda-symbol",
-  },
-  [Lang.JavaScript]: {
-    lambdaSymbol: "",
-    connector: " => ",
-    multiArg: false,
-    style: Style.Code,
-    image: "/js.png",
-    parenthesizeArg: true,
-    abstractionHandle: "connector",
-  },
-  [Lang.Tex]: {
-    lambdaSymbol: mathItalicSymbolLambda,
-    connector: ".",
-    multiArg: true,
-    style: Style.Math,
-    image: "/TeX_logo.svg.png",
-    parenthesizeArg: false,
-    abstractionHandle: "lambda-symbol",
-  },
-};
 
 function abstractionStyle(variable: string) {
   return (
@@ -241,7 +191,7 @@ type Stuff = {
   interactive: boolean;
 };
 
-const toDisplay = (
+function toDisplay(
   t: Term,
   context: (
     | { type: "lambda"; onClick?: undefined }
@@ -250,7 +200,7 @@ const toDisplay = (
   ) & { used?: boolean },
   stuff: Stuff,
   currentPath: string,
-): JSX.Element => {
+): JSX.Element {
   const { langInfo, pushReduce, interactive } = stuff;
   return termElim(
     t,
@@ -289,7 +239,7 @@ const toDisplay = (
             </button>
           ) : (
             <span
-              className={`${lambdaIsHandle ? "abstraction-handle" : ""} ${usedLambda ? "text-rose-300" : ""} whitespace-pre-wrap`}
+              className={`${lambdaIsHandle ? "abstraction-handle" : ""} ${usedLambda ? "used-lambda text-rose-300" : ""} whitespace-pre-wrap`}
             >
               {langInfo.lambdaSymbol.trim()}
             </span>
@@ -375,7 +325,7 @@ const toDisplay = (
       );
     },
   );
-};
+}
 
 const ShowTerm = memo(
   function ShowTerm({ t, stuff }: { t: Term; stuff: Stuff }) {
@@ -412,6 +362,19 @@ const examples: { name: string; term: Term }[] = [
   //TODO: add Y comb
 ];
 
+function* normalNormalization(term: Term) {
+  while (true) {
+    const targetPath = normalStrategyRedex(term);
+    if (targetPath === null) {
+      return;
+    }
+    const reduced = reduceAt(term, targetPath);
+    yield { reduced, targetPath };
+
+    term = reduced;
+  }
+}
+
 export default function Home() {
   const [focusedTerm, setFocusedTerm] = useState<Term>(identitySquared);
   const [history, setHistory] = useState<{ term: Term; targetPath: string }[]>(
@@ -438,45 +401,59 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function toggleAuto() {
+    autoRef.current = !auto;
     setAuto(!auto);
+    if (!auto) {
+      launchAuto();
+    }
   }
   const pushReduce = useCallback(
-    (path: string) => {
-      const reduced = reduceAt(activeTerm, path);
-      setHistory([...history, { term: activeTerm, targetPath: path }]);
+    (targetPath: string) => {
+      const reduced = reduceAt(activeTerm, targetPath);
+      setHistory((history) => [...history, { term: activeTerm, targetPath }]);
       setActiveTerm(reduced);
     },
-    [activeTerm, history],
+    [activeTerm],
   );
   function reset() {
     setHistory([]);
     setActiveTerm(focusedTerm);
     setAuto(false);
   }
-  function changeCurrentTerm(term: Term) {
+  function changeFocusedTerm(term: Term) {
     setFocusedTerm(term);
     setHistory([]);
     setActiveTerm(term);
     setAuto(false);
   }
 
-  useEffect(() => {
-    if (auto) {
-      const redexId = normalStrategyRedex(activeTerm);
-      if (redexId !== null) {
-        pushReduce(redexId);
-      } else {
-        setAuto(false);
-      }
-    }
-  }, [auto, activeTerm, pushReduce]);
+  const autoRef = useRef(auto);
+  autoRef.current = auto;
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "instant",
-    });
-  }, [terms]);
+  async function launchAuto() {
+    let prevTerm = activeTerm;
+    for (const { reduced, targetPath } of normalNormalization(activeTerm)) {
+      if (!autoRef.current) return;
+      let prevTerm2 = prevTerm; // we love closures
+      setHistory((history) => [...history, { term: prevTerm2, targetPath }]);
+      setActiveTerm(reduced);
+      prevTerm = reduced;
+
+      // we want to go on the macrotask queue so React can ever render
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    setAuto(false);
+  }
+
+  useEffect(
+    function scrollToEnd() {
+      scrollRef.current?.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "instant",
+      });
+    },
+    [terms],
+  );
 
   return (
     <div className="flex h-screen">
@@ -484,7 +461,7 @@ export default function Home() {
         {examples.map(({ name, term }) => (
           <button
             key={name}
-            onClick={() => changeCurrentTerm(term)}
+            onClick={() => changeFocusedTerm(term)}
             className="rounded-md p-2 hover:bg-gray-500"
           >
             {name}
@@ -515,18 +492,23 @@ export default function Home() {
         </div>
 
         <div
-          className="flex w-full flex-col gap-3 overflow-auto bg-zinc-900 ring-2 ring-rose-800"
+          className="flex w-full flex-col overflow-auto bg-zinc-900 ring-2 ring-rose-800"
           ref={scrollRef}
         >
           {terms.map(({ t, interactive, targetPath }, i) => (
             <div
-              className="output-row-container flex select-none items-center px-2 py-[0.5rem] [&:nth-child(even)]:bg-zinc-800"
+              className="output-row-container flex select-none items-center px-2 py-1 [&:nth-child(even)]:bg-zinc-800"
               key={i}
             >
               <div className=" w-20"> {i}. </div>
               <ShowTerm
                 t={t}
-                stuff={{ langInfo, pushReduce, targetPath, interactive }}
+                stuff={{
+                  langInfo,
+                  pushReduce,
+                  targetPath,
+                  interactive: !auto && interactive,
+                }}
               />
             </div>
           ))}
