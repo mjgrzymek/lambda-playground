@@ -16,6 +16,18 @@ import {
   normalStrategyRedex,
 } from "./term";
 
+/*
+classes for rules:
+  .paren-container
+  .abstraction-container
+  .abstraction-outer-container
+  .application-container
+  .abstraction-handle
+  .output-row-container
+
+also .var-${name} , .abstr-${name} for each variable name
+*/
+
 const I: Term = {
   type: "lambda",
   variable: "x",
@@ -99,11 +111,6 @@ const alpha = tapply(tlambda("x", tlambda("y", tvar("x"))), tvar("y"));
 const alphaClosed = tlambda("y", alpha);
 const alphaBug = tapply(tapply(alphaClosed, tvar("a")), tvar("b"));
 
-enum Style {
-  Math = "Math",
-  Code = "Code",
-}
-
 const displayVariable = (name: string, style: Style, className = "") => {
   if (style === Style.Code) {
     return <span className={`var-${name} ${className}`}>{name}</span>;
@@ -119,17 +126,6 @@ const displayVariable = (name: string, style: Style, className = "") => {
   );
 };
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      math: any;
-      mi: any;
-      mo: any;
-      msub: any;
-      mn: any;
-    }
-  }
-}
 function toMathematicalItalic(text: string): string {
   return Array.from(text)
     .map((char) => {
@@ -151,9 +147,6 @@ function toMathematicalItalic(text: string): string {
     .join("");
 }
 
-const textSymbolLambda = "λ";
-const mathItalicSymbolLambda = "𝜆";
-
 const parenthesizeIf = (b: boolean, t: JSX.Element) =>
   b ? (
     <span className="paren-container">
@@ -169,6 +162,13 @@ const parenthesizeIf = (b: boolean, t: JSX.Element) =>
     // for :has()
     <span className="paren-container">{t}</span>
   );
+
+const mathItalicSymbolLambda = "𝜆";
+
+enum Style {
+  Math = "Math",
+  Code = "Code",
+}
 
 enum Lang {
   Python = "Python",
@@ -234,18 +234,24 @@ function abstractionStyle(variable: string) {
   );
 }
 
-type Stuff = { langInfo: LangInfo; pushReduce: (id: symbol) => void };
+type Stuff = {
+  langInfo: LangInfo;
+  pushReduce: (path: string) => void;
+  targetPath: string | null;
+  interactive: boolean;
+};
 
 const toDisplay = (
   t: Term,
-  interactive: boolean,
   context: (
     | { type: "lambda"; onClick?: undefined }
     | { type: "redex"; onClick: () => void }
     | { type: "other"; onClick?: undefined }
-  ) & { stuff: Stuff },
+  ) & { used?: boolean },
+  stuff: Stuff,
+  currentPath: string,
 ): JSX.Element => {
-  const { langInfo, pushReduce } = context.stuff;
+  const { langInfo, pushReduce, interactive } = stuff;
   return termElim(
     t,
     (t) => displayVariable(t.name, langInfo.style),
@@ -253,15 +259,21 @@ const toDisplay = (
       const hideLambda = context.type === "lambda" && langInfo.multiArg;
       const hideConnector = t.body.type === "lambda" && langInfo.multiArg;
 
+      const used = context.used;
+
       const lambdaIsHandle = langInfo.abstractionHandle === "lambda-symbol";
       const interactiveLambda = lambdaIsHandle && context.type === "redex";
+      const usedLambda = lambdaIsHandle && used;
 
       const connectorIsHandle = langInfo.abstractionHandle === "connector";
       const interactiveConnector =
         connectorIsHandle && context.type === "redex";
+      const usedConnector = connectorIsHandle && used;
 
       console.assert(!(hideLambda && interactiveLambda));
+      console.assert(!(hideLambda && usedLambda));
       console.assert(!(hideConnector && interactiveConnector));
+      console.assert(!(hideConnector && usedConnector));
 
       return (
         <span
@@ -277,7 +289,7 @@ const toDisplay = (
             </button>
           ) : (
             <span
-              className={`${lambdaIsHandle ? "abstraction-handle" : ""} whitespace-pre-wrap`}
+              className={`${lambdaIsHandle ? "abstraction-handle" : ""} ${usedLambda ? "text-rose-300" : ""} whitespace-pre-wrap`}
             >
               {langInfo.lambdaSymbol.trim()}
             </span>
@@ -297,17 +309,21 @@ const toDisplay = (
             </button>
           ) : (
             <span
-              className={`${connectorIsHandle ? "abstraction-handle" : ""} whitespace-pre-wrap`}
+              className={`${connectorIsHandle ? "abstraction-handle" : ""} ${usedConnector ? "text-rose-300" : ""} whitespace-pre-wrap`}
             >
               {langInfo.connector.trim()}
             </span>
           )}
           {langInfo.connector !== "" &&
             langInfo.connector.slice(-1) === " " && <span> </span>}
-          {toDisplay(t.body, interactive, {
-            stuff: context.stuff,
-            type: "lambda",
-          })}
+          {toDisplay(
+            t.body,
+            {
+              type: "lambda",
+            },
+            stuff,
+            currentPath + "d",
+          )}
         </span>
       );
     },
@@ -318,17 +334,26 @@ const toDisplay = (
             {parenthesizeIf(
               t.func.type === "lambda",
               interactive && t.func.type === "lambda"
-                ? toDisplay(t.func, interactive, {
-                    stuff: context.stuff,
-                    type: "redex",
-                    onClick: () => {
-                      pushReduce(t.id);
+                ? toDisplay(
+                    t.func,
+                    {
+                      type: "redex",
+                      onClick: () => {
+                        pushReduce(currentPath);
+                      },
                     },
-                  })
-                : toDisplay(t.func, interactive, {
-                    type: "other",
-                    stuff: context.stuff,
-                  }),
+                    stuff,
+                    currentPath + "l",
+                  )
+                : toDisplay(
+                    t.func,
+                    {
+                      type: "other",
+                      used: currentPath === stuff.targetPath,
+                    },
+                    stuff,
+                    currentPath + "l",
+                  ),
             )}
           </span>
           <span className="[.application-container:has(>.abstraction-outer-container>.paren-container>.abstraction-container>.abstraction-handle:hover)>&]:ring">
@@ -336,10 +361,14 @@ const toDisplay = (
               t.arg.type === "apply" ||
                 t.arg.type === "lambda" ||
                 langInfo.parenthesizeArg,
-              toDisplay(t.arg, interactive, {
-                type: "other",
-                stuff: context.stuff,
-              }),
+              toDisplay(
+                t.arg,
+                {
+                  type: "other",
+                },
+                stuff,
+                currentPath + "r",
+              ),
             )}
           </span>
         </span>
@@ -349,29 +378,22 @@ const toDisplay = (
 };
 
 const ShowTerm = memo(
-  function ShowTerm({
-    t,
-    interactive,
-    stuff,
-  }: {
-    t: Term;
-    interactive: boolean;
-    stuff: Stuff;
-  }) {
+  function ShowTerm({ t, stuff }: { t: Term; stuff: Stuff }) {
     const { langInfo } = stuff;
     return (
       <span
         className={`select-none ${langInfo.style === Style.Math ? "font-maths" : "font-mono"}`}
       >
-        {toDisplay(t, interactive, { type: "other", stuff })}
+        {toDisplay(t, { type: "other" }, stuff, "")}
       </span>
     );
   },
   (prev, next) =>
-    prev.interactive === false &&
-    next.interactive === false &&
+    prev.stuff.interactive === false &&
+    next.stuff.interactive === false &&
     prev.t === next.t &&
-    prev.stuff.langInfo === next.stuff.langInfo,
+    prev.stuff.langInfo === next.stuff.langInfo &&
+    prev.stuff.targetPath === next.stuff.targetPath,
 );
 
 const identitySquared = tapply(I, I);
@@ -387,39 +409,44 @@ const examples: { name: string; term: Term }[] = [
   { name: "2 + 2", term: tapply(tapply(add, two), two) },
   { name: "3 * 2", term: threeTimesTwo },
   { name: "3 ^ 3", term: threeToThree },
+  //TODO: add Y comb
 ];
 
 export default function Home() {
   const [focusedTerm, setFocusedTerm] = useState<Term>(identitySquared);
-  const [history, setHistory] = useState<Term[]>([]);
+  const [history, setHistory] = useState<{ term: Term; targetPath: string }[]>(
+    [],
+  );
   const [activeTerm, setActiveTerm] = useState<Term>(focusedTerm);
   const [lang, setLang] = useState<Lang>(Lang.Python);
   const [auto, setAuto] = useState(false);
 
   const langInfo = langData[lang];
-  const terms = useMemo(
-    () => [
-      ...history.map((t) => ({ t, interactive: false })),
-      { t: activeTerm, interactive: true },
-    ],
-    [activeTerm, history],
-  );
+  const terms: { t: Term; targetPath: string | null; interactive: boolean }[] =
+    useMemo(
+      () => [
+        ...history.map(({ term, targetPath }) => ({
+          t: term,
+          targetPath,
+          interactive: false,
+        })),
+        { t: activeTerm, targetPath: null, interactive: true },
+      ],
+      [activeTerm, history],
+    );
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function toggleAuto() {
     setAuto(!auto);
   }
-  const pushAst = useCallback(
-    (term: Term) => {
-      setHistory([...history, activeTerm]);
-      setActiveTerm(term);
-    },
-    [history, activeTerm],
-  );
   const pushReduce = useCallback(
-    (id: symbol) => pushAst(reduceAt(activeTerm, id)),
-    [activeTerm, pushAst],
+    (path: string) => {
+      const reduced = reduceAt(activeTerm, path);
+      setHistory([...history, { term: activeTerm, targetPath: path }]);
+      setActiveTerm(reduced);
+    },
+    [activeTerm, history],
   );
   function reset() {
     setHistory([]);
@@ -434,12 +461,6 @@ export default function Home() {
   }
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "instant",
-    });
-  }, [terms]);
-  useEffect(() => {
     if (auto) {
       const redexId = normalStrategyRedex(activeTerm);
       if (redexId !== null) {
@@ -449,6 +470,13 @@ export default function Home() {
       }
     }
   }, [auto, activeTerm, pushReduce]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "instant",
+    });
+  }, [terms]);
 
   return (
     <div className="flex h-screen">
@@ -487,16 +515,18 @@ export default function Home() {
         </div>
 
         <div
-          className="flex w-full flex-col gap-3 overflow-auto bg-zinc-900 p-2 ring-2 ring-rose-800"
+          className="flex w-full flex-col gap-3 overflow-auto bg-zinc-900 ring-2 ring-rose-800"
           ref={scrollRef}
         >
-          {terms.map(({ t, interactive }, i) => (
-            <div className="flex select-none items-center" key={i}>
+          {terms.map(({ t, interactive, targetPath }, i) => (
+            <div
+              className="output-row-container flex select-none items-center px-2 py-[0.5rem] [&:nth-child(even)]:bg-zinc-800"
+              key={i}
+            >
               <div className=" w-20"> {i}. </div>
               <ShowTerm
                 t={t}
-                interactive={interactive}
-                stuff={{ langInfo, pushReduce }}
+                stuff={{ langInfo, pushReduce, targetPath, interactive }}
               />
             </div>
           ))}

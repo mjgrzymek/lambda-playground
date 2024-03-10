@@ -1,4 +1,5 @@
 type vName = string;
+
 export type varTerm = { type: "variable"; name: vName };
 export const tvar = (name: vName): varTerm => ({ type: "variable", name });
 export type lambdaTerm = { type: "lambda"; variable: vName; body: Term };
@@ -7,12 +8,11 @@ export const tlambda = (variable: vName, body: Term): lambdaTerm => ({
   variable,
   body,
 });
-type applyTerm = { type: "apply"; func: Term; arg: Term; id: symbol };
+type applyTerm = { type: "apply"; func: Term; arg: Term };
 export const tapply = (func: Term, arg: Term): applyTerm => ({
   type: "apply",
   func,
   arg,
-  id: Symbol(),
 });
 export type Term = varTerm | lambdaTerm | applyTerm;
 export const termElim = <T>(
@@ -71,26 +71,47 @@ const reduce = (t: Term): Term =>
     ? bad("reduce at invalid point")
     : rewrite(t.func.body, t.func.variable, t.arg);
 
-export const reduceAt = (term: Term, id: symbol): Term =>
+type OnPath = string | null;
+
+//export const eatPath = (direction: "l" | "r" | "d", onPath: OnPath): OnPath => {
+//if (onPath === direction) return "";
+//if (onPath === null) return null;
+//if (onPath.length === 0) return null;
+//if (onPath[0] === direction) return onPath.slice(1);
+//return null;
+//};
+
+export const reduceAt = (
+  term: Term,
+  targetPath: string,
+  currentPath: string = "",
+): Term =>
   termElim(
     term,
     (t) => t,
-    (t) => tlambda(t.variable, reduceAt(t.body, id)),
+    (t) => tlambda(t.variable, reduceAt(t.body, targetPath, currentPath + "d")),
     (t) =>
-      t.id === id
+      currentPath === targetPath
         ? reduce(t)
-        : tapply(reduceAt(t.func, id), reduceAt(t.arg, id)),
+        : tapply(
+            reduceAt(t.func, targetPath, currentPath + "l"),
+            reduceAt(t.arg, targetPath, currentPath + "r"),
+          ),
   );
 
-export const normalStrategyRedex = (t: Term): symbol | null => {
+export const normalStrategyRedex = (
+  t: Term,
+  path: string = "",
+): string | null => {
   return termElim(
     t,
     (t) => null,
-    (t) => normalStrategyRedex(t.body),
+    (t) => normalStrategyRedex(t.body, path + "d"),
     (t) =>
       isRedex(t)
-        ? t.id
-        : normalStrategyRedex(t.func) ?? normalStrategyRedex(t.arg),
+        ? path
+        : normalStrategyRedex(t.func, path + "l") ??
+          normalStrategyRedex(t.arg, path + "r"),
   );
 };
 
