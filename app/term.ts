@@ -69,7 +69,7 @@ const rewrite = (t: Term, from: vName, to: Term): Term =>
 const isRedex = (t: Term): boolean =>
   t.type === "apply" && t.func.type === "lambda";
 
-function cleanTerm(t: Term): Term {
+export function cleanTerm(t: Term): Term {
   return termElim<Term>(
     t,
     (t) => tvar(t.name),

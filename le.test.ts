@@ -8,6 +8,7 @@ import {
   termElim,
   tlambda,
   tvar,
+  cleanTerm,
 } from "./app/term";
 import _ from "lodash";
 
@@ -101,9 +102,9 @@ test("xD", () => {
 
 test("beta normal is unique", () => {
   testTerms.forEach((t) => {
-    const normalForms = naiveBetaNormalForms(t, 5).map((nf) =>
-      alphaNormalizeTerm(nf),
-    );
+    const normalForms = naiveBetaNormalForms(t, 5)
+      .map((nf) => alphaNormalizeTerm(nf))
+      .map(cleanTerm);
     if (normalForms.length > 1) {
       normalForms.forEach((nf) =>
         expect(JSON.stringify(nf)).toBe(JSON.stringify(normalForms[0])),

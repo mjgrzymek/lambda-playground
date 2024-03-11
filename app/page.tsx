@@ -213,9 +213,7 @@ function toDisplay(
       console.assert(!(hideConnector && usedConnector));
 
       return (
-        <span
-          className={`abstr-${t.variable} abstraction-container TODO[&:has(>.abstraction-handle:hover)]:bg-pink-700`}
-        >
+        <span className={`abstr-${t.variable} abstraction-container `}>
           {abstractionStyle(t.variable)}
           {hideLambda ? null : interactiveLambda ? (
             <span
@@ -403,7 +401,7 @@ export default function Home() {
     count: terms.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 100, // ??
-    overscan: 3,
+    overscan: 1,
   });
 
   function toggleAuto() {
