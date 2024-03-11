@@ -7,14 +7,13 @@ import {
   tapply,
   tvar,
   tlambda,
-  lambdaTerm,
   termElim,
   reduceAt,
-  varTerm,
   splitNumberSubscript,
   naiveBetaNormalize,
   normalStrategyRedex,
 } from "./term";
+
 import { Style, LangInfo, Lang, langData } from "./languages";
 
 /*
@@ -25,7 +24,8 @@ classes for rules:
   .application-container
   .abstraction-handle
   .output-row-container
-  .used-lambda
+  .used-handle
+  .result-container
 
 also .var-${name} , .abstr-${name} for each variable name
 */
@@ -111,7 +111,6 @@ const threeToThree = tapply(three, three);
 const eta = tlambda("x", tlambda("y", tapply(tvar("x"), tvar("y")))); // just the identity
 const alpha = tapply(tlambda("x", tlambda("y", tvar("x"))), tvar("y"));
 const alphaClosed = tlambda("y", alpha);
-const alphaBug = tapply(tapply(alphaClosed, tvar("a")), tvar("b"));
 
 function displayVariable(name: string, style: Style, className = "") {
   if (style === Style.Code) {
@@ -149,14 +148,18 @@ function toMathematicalItalic(text: string): string {
     .join("");
 }
 
-function parenthesizeIf(b: boolean, t: JSX.Element) {
+function parenthesizeIf(b: boolean, t: JSX.Element, langInfo: LangInfo) {
   return b ? (
     <span className="paren-container">
-      <span className="p-[0.07rem] [.paren-container:has(>&:hover)>&]:text-red-600">
+      <span
+        className={`${langInfo.style === Style.Math ? "p-[0.07rem]" : ""} [.paren-container:has(>&:hover)>&]:text-red-600`}
+      >
         (
       </span>
       {t}
-      <span className="p-[0.07rem] [.paren-container:has(>&:hover)>&]:text-red-600">
+      <span
+        className={`${langInfo.style === Style.Math ? "p-[0.07rem]" : ""} [.paren-container:has(>&:hover)>&]:text-red-600`}
+      >
         )
       </span>
     </span>
@@ -166,14 +169,17 @@ function parenthesizeIf(b: boolean, t: JSX.Element) {
   );
 }
 
-function abstractionStyle(variable: string) {
+/**
+ * @argument x the variable name
+ */
+function abstractionStyle(x: string) {
   return (
     <style jsx global>
       {`
-        .abstr-${variable}:has(.var-${variable}:hover):not(
-            :has(.abstr-${variable}:hover)
-          )
-          .var-${variable}:not(.abstr-${variable}:hover .abstr-${variable}:not(:hover) .var-${variable}) {
+        .abstr-${x}:has(.var-${x}:hover):not(:has(.abstr-${x}:hover))
+          .var-${x}:not(.abstr-${x}:not(:hover) .var-${x}),
+        .abstr-${x}:has(>.abstraction-handle:hover)
+          .var-${x}:not(.abstr-${x}:not(:hover) .var-${x}) {
           color: green;
           &.bind {
             border-bottom: 1px solid green;
@@ -202,7 +208,7 @@ function toDisplay(
   currentPath: string,
 ): JSX.Element {
   const { langInfo, pushReduce, interactive } = stuff;
-  return termElim(
+  const result = termElim(
     t,
     (t) => displayVariable(t.name, langInfo.style),
     (t) => {
@@ -227,19 +233,19 @@ function toDisplay(
 
       return (
         <span
-          className={`abstr-${t.variable} abstraction-container [&:has(>.abstraction-handle:hover)]:bg-pink-700`}
+          className={`abstr-${t.variable} abstraction-container TODO[&:has(>.abstraction-handle:hover)]:bg-pink-700`}
         >
           {abstractionStyle(t.variable)}
           {hideLambda ? null : interactiveLambda ? (
-            <button
+            <span
               onClick={context.onClick}
               className="abstraction-handle cursor-pointer whitespace-pre-wrap text-blue-400 hover:text-blue-600"
             >
               {langInfo.lambdaSymbol.trim()}
-            </button>
+            </span>
           ) : (
             <span
-              className={`${lambdaIsHandle ? "abstraction-handle" : ""} ${usedLambda ? "used-lambda text-rose-300" : ""} whitespace-pre-wrap`}
+              className={`${lambdaIsHandle ? "abstraction-handle" : ""} ${usedLambda ? "used-handle text-rose-300" : ""} whitespace-pre-wrap`}
             >
               {langInfo.lambdaSymbol.trim()}
             </span>
@@ -251,36 +257,39 @@ function toDisplay(
             <span> </span>
           )}
           {hideConnector ? null : interactiveConnector ? (
-            <button
+            <span
               onClick={context.onClick}
-              className="abstraction-handle whitespace-pre-wrap text-blue-400 hover:text-blue-600"
+              className="abstraction-handle cursor-pointer whitespace-pre-wrap text-blue-400 hover:text-blue-600"
             >
               {langInfo.connector.trim()}
-            </button>
+            </span>
           ) : (
             <span
-              className={`${connectorIsHandle ? "abstraction-handle" : ""} ${usedConnector ? "text-rose-300" : ""} whitespace-pre-wrap`}
+              className={`${connectorIsHandle ? "abstraction-handle" : ""} ${usedConnector ? "used-handle text-rose-300" : ""} whitespace-pre-wrap`}
             >
               {langInfo.connector.trim()}
             </span>
           )}
           {langInfo.connector !== "" &&
             langInfo.connector.slice(-1) === " " && <span> </span>}
-          {toDisplay(
-            t.body,
-            {
-              type: "lambda",
-            },
-            stuff,
-            currentPath + "d",
-          )}
+
+          <span className="outline-2 outline-rose-500 [.abstraction-container:has(>.abstraction-handle:hover)>&]:outline">
+            {toDisplay(
+              t.body,
+              {
+                type: "lambda",
+              },
+              stuff,
+              currentPath + "d",
+            )}
+          </span>
         </span>
       );
     },
     (t) => {
       return (
         <span className="application-container ">
-          <span className="abstraction-outer-container [&:has(>.paren-container>.abstraction-container>.abstraction-handle:hover)]:bg-pink-700">
+          <span className="abstraction-outer-container TODO[&:has(>.paren-container>.result-container>.abstraction-container>.abstraction-handle:hover)]:bg-pink-700">
             {parenthesizeIf(
               t.func.type === "lambda",
               interactive && t.func.type === "lambda"
@@ -304,9 +313,10 @@ function toDisplay(
                     stuff,
                     currentPath + "l",
                   ),
+              langInfo,
             )}
           </span>
-          <span className="[.application-container:has(>.abstraction-outer-container>.paren-container>.abstraction-container>.abstraction-handle:hover)>&]:ring">
+          <span className="outline-2 outline-sky-600 [.application-container:has(>.abstraction-outer-container>.paren-container>.result-container>.abstraction-container>.abstraction-handle:hover)>&]:outline">
             {parenthesizeIf(
               t.arg.type === "apply" ||
                 t.arg.type === "lambda" ||
@@ -319,11 +329,22 @@ function toDisplay(
                 stuff,
                 currentPath + "r",
               ),
+              langInfo,
             )}
           </span>
         </span>
       );
     },
+  );
+  return (
+    // todo double span for double outline?
+    <span
+      className={`result-container ${t.marker === "used-body" ? "outline-2 outline-offset-4 outline-rose-500 " : ""}
+      ${t.marker === "used-argument" ? "outline-2 outline-sky-600" : ""}
+      ${t.marker !== undefined ? "[.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline" : ""} `}
+    >
+      {result}
+    </span>
   );
 }
 
@@ -332,7 +353,7 @@ const ShowTerm = memo(
     const { langInfo } = stuff;
     return (
       <span
-        className={`select-none ${langInfo.style === Style.Math ? "font-maths" : "font-mono"}`}
+        className={` ${langInfo.style === Style.Math ? "font-maths" : "font-mono"}`}
       >
         {toDisplay(t, { type: "other" }, stuff, "")}
       </span>
@@ -469,6 +490,7 @@ export default function Home() {
         ))}
       </nav>
       <main className="flex flex-1 flex-col items-center gap-4 p-12 text-xl">
+        <span className="animate-spin bg-black p-2"> I </span>
         <div className="flex w-full items-center justify-center ">
           <div className="flex flex-1 justify-center gap-2">
             <button className="rounded-md bg-rose-400 p-2" onClick={reset}>
@@ -492,12 +514,12 @@ export default function Home() {
         </div>
 
         <div
-          className="flex w-full flex-col overflow-auto bg-zinc-900 ring-2 ring-rose-800"
+          className="flex w-full flex-col overflow-auto bg-zinc-900 outline outline-2 outline-rose-800"
           ref={scrollRef}
         >
           {terms.map(({ t, interactive, targetPath }, i) => (
             <div
-              className="output-row-container flex select-none items-center px-2 py-1 [&:nth-child(even)]:bg-zinc-800"
+              className="output-row-container flex  items-center px-2 py-1 [&:nth-child(even)]:bg-zinc-800"
               key={i}
             >
               <div className=" w-20"> {i}. </div>

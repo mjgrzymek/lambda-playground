@@ -69,17 +69,36 @@ const rewrite = (t: Term, from: vName, to: Term): Term =>
 const isRedex = (t: Term): boolean =>
   t.type === "apply" && t.func.type === "lambda";
 
-const reduce = (t: Term): Term =>
-  !(t.type === "apply" && t.func.type === "lambda")
-    ? bad("reduce at invalid point")
-    : rewrite(t.func.body, t.func.variable, t.arg);
+function cleanTerm(t: Term): Term {
+  return termElim<Term>(
+    t,
+    (t) => tvar(t.name),
+    (t) => tlambda(t.variable, cleanTerm(t.body)),
+    (t) => tapply(cleanTerm(t.func), cleanTerm(t.arg)),
+  );
+}
 
-export const reduceAt = (
+function reduce(t: Term): Term {
+  if (t.type !== "apply" || t.func.type !== "lambda") {
+    throw new Error("reduce at invalid point");
+  } else {
+    return {
+      ...rewrite(t.func.body, t.func.variable, {
+        ...t.arg,
+        marker: "used-argument",
+      }),
+      marker: "used-body",
+    };
+  }
+}
+
+export function reduceAt(
   term: Term,
   targetPath: string,
   currentPath: string = "",
-): Term =>
-  termElim(
+): Term {
+  term = cleanTerm(term);
+  return termElim<Term>(
     term,
     (t) => t,
     (t) => tlambda(t.variable, reduceAt(t.body, targetPath, currentPath + "d")),
@@ -91,6 +110,7 @@ export const reduceAt = (
             reduceAt(t.arg, targetPath, currentPath + "r"),
           ),
   );
+}
 
 export const normalStrategyRedex = (
   t: Term,
@@ -208,7 +228,7 @@ export const isBetaNormal = (t: Term): boolean => betaChildren(t).length === 0;
 export const naiveBetaNormalize = (t: Term): Term => {
   for (let i = 0; i < 30; i++) {
     if (isBetaNormal(t)) {
-      return t;
+      return cleanTerm(t);
     }
     t = betaChildren(t)[0];
   }
