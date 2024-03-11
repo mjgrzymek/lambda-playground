@@ -17,6 +17,8 @@ import {
 import { Style, LangInfo, Lang, langData } from "./languages";
 import { abstractionStyle } from "./abstractionStyle";
 
+import { Virtuoso } from "react-virtuoso";
+
 /*
 classes for rules:
   .paren-container
@@ -399,8 +401,6 @@ export default function Home() {
       [activeTerm, history],
     );
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   function toggleAuto() {
     autoRef.current = !auto;
     setAuto(!auto);
@@ -446,16 +446,6 @@ export default function Home() {
     setAuto(false);
   }
 
-  useEffect(
-    function scrollToEnd() {
-      scrollRef.current?.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: "instant",
-      });
-    },
-    [terms],
-  );
-
   return (
     <div className="flex h-screen">
       <nav className="flex w-64 flex-col justify-center bg-zinc-800">
@@ -492,27 +482,32 @@ export default function Home() {
           </div>
         </div>
 
-        <div
-          className="flex w-full flex-col overflow-auto bg-zinc-900 outline outline-2 outline-rose-800"
-          ref={scrollRef}
-        >
-          {terms.map(({ t, interactive, targetPath }, i) => (
-            <div
-              className="output-row-container flex  cursor-default items-center px-2 py-1 [&:nth-child(even)]:bg-zinc-800"
-              key={i}
-            >
-              <div className=" w-20"> {i}. </div>
-              <ShowTerm
-                t={t}
-                stuff={{
-                  langInfo,
-                  pushReduce,
-                  targetPath,
-                  interactive: !auto && interactive,
-                }}
-              />
-            </div>
-          ))}
+        <div className="flex w-full flex-col overflow-auto bg-zinc-900 outline outline-2 outline-rose-800">
+          <Virtuoso
+            style={{ height: "700px" }}
+            totalCount={terms.length}
+            followOutput={(_isAtBottom) => true}
+            itemContent={(i) => {
+              let { t, interactive, targetPath } = terms[i];
+              return (
+                <div
+                  className="output-row-container flex  cursor-default items-center px-2 py-1 [&:nth-child(even)]:bg-zinc-800"
+                  key={i}
+                >
+                  <div className=" w-20"> {i}. </div>
+                  <ShowTerm
+                    t={t}
+                    stuff={{
+                      langInfo,
+                      pushReduce,
+                      targetPath,
+                      interactive: !auto && interactive,
+                    }}
+                  />
+                </div>
+              );
+            }}
+          />
         </div>
       </main>
     </div>
