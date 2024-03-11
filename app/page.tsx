@@ -23,7 +23,6 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 classes for rules:
   .paren-container
   .abstraction-container
-  .abstraction-outer-container
   .application-container
   .abstraction-handle
   .output-row-container
@@ -271,34 +270,32 @@ function toDisplay(
     (t) => {
       return (
         <span className="application-container ">
-          <span className="abstraction-outer-container TODO[&:has(>.paren-container>.result-container>.abstraction-container>.abstraction-handle:hover)]:bg-pink-700">
-            {parenthesizeIf(
-              t.func.type === "lambda",
-              interactive && t.func.type === "lambda"
-                ? toDisplay(
-                    t.func,
-                    {
-                      type: "redex",
-                      onClick: () => {
-                        pushReduce(currentPath);
-                      },
+          {parenthesizeIf(
+            t.func.type === "lambda",
+            interactive && t.func.type === "lambda"
+              ? toDisplay(
+                  t.func,
+                  {
+                    type: "redex",
+                    onClick: () => {
+                      pushReduce(currentPath);
                     },
-                    stuff,
-                    currentPath + "l",
-                  )
-                : toDisplay(
-                    t.func,
-                    {
-                      type: "other",
-                      used: currentPath === stuff.targetPath,
-                    },
-                    stuff,
-                    currentPath + "l",
-                  ),
-              langInfo,
-            )}
-          </span>
-          <span className="outline-2 outline-sky-600 [.application-container:has(>.abstraction-outer-container>.paren-container>.result-container>.abstraction-container>.abstraction-handle:hover)>&]:outline">
+                  },
+                  stuff,
+                  currentPath + "l",
+                )
+              : toDisplay(
+                  t.func,
+                  {
+                    type: "other",
+                    used: currentPath === stuff.targetPath,
+                  },
+                  stuff,
+                  currentPath + "l",
+                ),
+            langInfo,
+          )}
+          <span className="outline-2 outline-sky-600 [.application-container:has(>.paren-container>.result-container>.abstraction-container>.abstraction-handle:hover)>&]:outline">
             {parenthesizeIf(
               t.arg.type === "apply" ||
                 t.arg.type === "lambda" ||
@@ -454,8 +451,10 @@ export default function Home() {
   }
 
   useEffect(() => {
-    rowVirtualizer.scrollBy(1000);
-  }, [terms, rowVirtualizer]);
+    rowVirtualizer.scrollToIndex(terms.length - 1);
+  }, [terms.length, rowVirtualizer]);
+
+  const items = rowVirtualizer.getVirtualItems();
 
   return (
     <div className="flex h-screen">
@@ -499,48 +498,53 @@ export default function Home() {
         <div
           style={{ overflow: "auto" }}
           ref={parentRef}
-          className=" h-full  w-full overflow-auto bg-zinc-900 outline outline-2 outline-rose-800"
+          className=" h-full  w-full overflow-y-auto bg-zinc-900 outline outline-2 outline-rose-800 [contain:strict]"
         >
           <div
             style={{
-              height: `${rowVirtualizer.getTotalSize()}px`,
+              height: rowVirtualizer.getTotalSize(),
               width: "100%",
               position: "relative",
             }}
           >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              return (
-                <div
-                  key={virtualRow.index}
-                  className="output-row-container flex  cursor-default items-center px-2 py-1 [&:nth-child(even)]:bg-zinc-800"
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                >
-                  <div className=" w-20"> {virtualRow.index}. </div>
-                  {(() => {
-                    const { t, interactive, targetPath } =
-                      terms[virtualRow.index];
-                    return (
-                      <ShowTerm
-                        t={t}
-                        stuff={{
-                          langInfo,
-                          pushReduce,
-                          targetPath,
-                          interactive: !auto && interactive,
-                        }}
-                      />
-                    );
-                  })()}
-                </div>
-              );
-            })}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${items[0]?.start ?? 0}px)`,
+              }}
+            >
+              {items.map((virtualRow) => {
+                return (
+                  <div
+                    key={virtualRow.key}
+                    className={`output-row-container flex  cursor-default items-center px-2 py-1 ${virtualRow.index % 2 == 1 ? "bg-zinc-800" : ""}`}
+                    ref={rowVirtualizer.measureElement}
+                    data-index={virtualRow.index}
+                    style={{}}
+                  >
+                    <div className=" w-20"> {virtualRow.index}. </div>
+                    {(() => {
+                      const { t, interactive, targetPath } =
+                        terms[virtualRow.index];
+                      return (
+                        <ShowTerm
+                          t={t}
+                          stuff={{
+                            langInfo,
+                            pushReduce,
+                            targetPath,
+                            interactive: !auto && interactive,
+                          }}
+                        />
+                      );
+                    })()}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </main>
