@@ -176,9 +176,10 @@ function abstractionStyle(x: string) {
   return (
     <style jsx global>
       {`
-        .abstr-${x}:has(.var-${x}:hover):not(:has(.abstr-${x}:hover))
-          .var-${x}:not(.abstr-${x}:not(:hover) .var-${x}),
-        .abstr-${x}:has(>.abstraction-handle:hover)
+        :is(
+            .abstr-${x}:has(.var-${x}:hover):not(:has(.abstr-${x}:hover)),
+            .abstr-${x}:has(>.abstraction-handle:hover)
+          )
           .var-${x}:not(.abstr-${x}:not(:hover) .var-${x}) {
           color: green;
           &.bind {
