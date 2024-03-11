@@ -17,6 +17,8 @@ import {
 import { Style, LangInfo, Lang, langData } from "./languages";
 import { abstractionStyle } from "./abstractionStyle";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
+
 /*
 classes for rules:
   .paren-container
@@ -399,7 +401,12 @@ export default function Home() {
       [activeTerm, history],
     );
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: terms.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 50,
+  });
 
   function toggleAuto() {
     autoRef.current = !auto;
@@ -446,15 +453,9 @@ export default function Home() {
     setAuto(false);
   }
 
-  useEffect(
-    function scrollToEnd() {
-      scrollRef.current?.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: "instant",
-      });
-    },
-    [terms],
-  );
+  useEffect(() => {
+    rowVirtualizer.scrollBy(1000);
+  }, [terms, rowVirtualizer]);
 
   return (
     <div className="flex h-screen">
@@ -492,27 +493,55 @@ export default function Home() {
           </div>
         </div>
 
+        {/*  
+ className="flex w-full flex-col overflow-auto bg-zinc-900 outline outline-2 outline-rose-800"
+ */}
         <div
-          className="flex w-full flex-col overflow-auto bg-zinc-900 outline outline-2 outline-rose-800"
-          ref={scrollRef}
+          style={{ overflow: "auto" }}
+          ref={parentRef}
+          className=" h-full  w-full overflow-auto bg-zinc-900 outline outline-2 outline-rose-800"
         >
-          {terms.map(({ t, interactive, targetPath }, i) => (
-            <div
-              className="output-row-container flex  cursor-default items-center px-2 py-1 [&:nth-child(even)]:bg-zinc-800"
-              key={i}
-            >
-              <div className=" w-20"> {i}. </div>
-              <ShowTerm
-                t={t}
-                stuff={{
-                  langInfo,
-                  pushReduce,
-                  targetPath,
-                  interactive: !auto && interactive,
-                }}
-              />
-            </div>
-          ))}
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              return (
+                <div
+                  key={virtualRow.index}
+                  className="output-row-container flex  cursor-default items-center px-2 py-1 [&:nth-child(even)]:bg-zinc-800"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  <div className=" w-20"> {virtualRow.index}. </div>
+                  {(() => {
+                    const { t, interactive, targetPath } =
+                      terms[virtualRow.index];
+                    return (
+                      <ShowTerm
+                        t={t}
+                        stuff={{
+                          langInfo,
+                          pushReduce,
+                          targetPath,
+                          interactive: !auto && interactive,
+                        }}
+                      />
+                    );
+                  })()}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </main>
     </div>
