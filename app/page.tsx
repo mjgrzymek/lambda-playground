@@ -402,7 +402,8 @@ export default function Home() {
   const rowVirtualizer = useVirtualizer({
     count: terms.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 50,
+    estimateSize: () => 100, // ??
+    overscan: 3,
   });
 
   function toggleAuto() {
@@ -517,30 +518,26 @@ export default function Home() {
               }}
             >
               {items.map((virtualRow) => {
+                const { t, interactive, targetPath } = terms[virtualRow.index];
                 return (
                   <div
                     key={virtualRow.key}
                     className={`output-row-container flex  cursor-default items-center px-2 py-1 ${virtualRow.index % 2 == 1 ? "bg-zinc-800" : ""}`}
                     ref={rowVirtualizer.measureElement}
                     data-index={virtualRow.index}
-                    style={{}}
                   >
-                    <div className=" w-20"> {virtualRow.index}. </div>
-                    {(() => {
-                      const { t, interactive, targetPath } =
-                        terms[virtualRow.index];
-                      return (
-                        <ShowTerm
-                          t={t}
-                          stuff={{
-                            langInfo,
-                            pushReduce,
-                            targetPath,
-                            interactive: !auto && interactive,
-                          }}
-                        />
-                      );
-                    })()}
+                    <div className=" w-20 flex-shrink-0">
+                      {virtualRow.index}.
+                    </div>
+                    <ShowTerm
+                      t={t}
+                      stuff={{
+                        langInfo,
+                        pushReduce,
+                        targetPath,
+                        interactive: !auto && interactive,
+                      }}
+                    />
                   </div>
                 );
               })}
