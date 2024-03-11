@@ -15,6 +15,7 @@ import {
 } from "./term";
 
 import { Style, LangInfo, Lang, langData } from "./languages";
+import { abstractionStyle } from "./abstractionStyle";
 
 /*
 classes for rules:
@@ -166,28 +167,6 @@ function parenthesizeIf(b: boolean, t: JSX.Element, langInfo: LangInfo) {
   ) : (
     // for :has()
     <span className="paren-container">{t}</span>
-  );
-}
-
-/**
- * @argument x the variable name
- */
-function abstractionStyle(x: string) {
-  return (
-    <style jsx global>
-      {`
-        :is(
-            .abstr-${x}:has(.var-${x}:hover):not(:has(.abstr-${x}:hover)),
-            .abstr-${x}:has(>.abstraction-handle:hover)
-          )
-          .var-${x}:not(.abstr-${x}:not(:hover) .var-${x}) {
-          color: green;
-          &.bind {
-            border-bottom: 1px solid green;
-          }
-        }
-      `}
-    </style>
   );
 }
 
@@ -491,7 +470,6 @@ export default function Home() {
         ))}
       </nav>
       <main className="flex flex-1 flex-col items-center gap-4 p-12 text-xl">
-        <span className="animate-spin bg-black p-2"> I </span>
         <div className="flex w-full items-center justify-center ">
           <div className="flex flex-1 justify-center gap-2">
             <button className="rounded-md bg-rose-400 p-2" onClick={reset}>
@@ -520,7 +498,7 @@ export default function Home() {
         >
           {terms.map(({ t, interactive, targetPath }, i) => (
             <div
-              className="output-row-container flex  items-center px-2 py-1 [&:nth-child(even)]:bg-zinc-800"
+              className="output-row-container flex  cursor-default items-center px-2 py-1 [&:nth-child(even)]:bg-zinc-800"
               key={i}
             >
               <div className=" w-20"> {i}. </div>

@@ -45,3 +45,15 @@ body {
   .var-x:not(.abstr-x:hover .abstr-x:not(:hover) .var-x) {
   @apply text-emerald-500;
 }*/
+
+/*
+.abstr-x:is(
+    :has(.var-x:hover):not(:has(.abstr-x:hover)),
+    :has(> .abstraction-handle:hover)
+  )
+  .var-x:not(.abstr-x:not(:hover) .var-x) {
+  color: green;
+  &.bind {
+    border-bottom: 1px solid green;
+  }
+}*/
