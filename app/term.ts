@@ -14,7 +14,7 @@ export const tapply = (func: Term, arg: Term): applyTerm => ({
   func,
   arg,
 });
-type Marker = "used-body" | "used-argument"; // I will regret this
+type Marker = { usedBody?: true; usedArgument?: true }; //"used-body" | "used-argument";
 export type Term = (varTerm | lambdaTerm | applyTerm) & {
   marker?: Marker | undefined;
 };
@@ -82,12 +82,14 @@ function reduce(t: Term): Term {
   if (t.type !== "apply" || t.func.type !== "lambda") {
     throw new Error("reduce at invalid point");
   } else {
+    const markedArg = {
+      ...t.arg,
+      marker: { usedArgument: true } as const,
+    };
+    const rw = rewrite(t.func.body, t.func.variable, markedArg);
     return {
-      ...rewrite(t.func.body, t.func.variable, {
-        ...t.arg,
-        marker: "used-argument",
-      }),
-      marker: "used-body",
+      ...rw,
+      marker: { ...rw.marker, usedBody: true } as const,
     };
   }
 }

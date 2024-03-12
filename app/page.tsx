@@ -27,7 +27,8 @@ classes for rules:
   .abstraction-handle
   .output-row-container
   .used-handle
-  .result-container
+  .result-container-outer
+  .result-container-inner
 
 also .var-${name} , .abstr-${name} for each variable name
 */
@@ -216,12 +217,12 @@ function toDisplay(
         <span className={`abstr-${t.variable} abstraction-container `}>
           {abstractionStyle(t.variable)}
           {hideLambda ? null : interactiveLambda ? (
-            <span
+            <button
               onClick={context.onClick}
-              className="abstraction-handle cursor-pointer whitespace-pre-wrap text-blue-400 hover:text-blue-600"
+              className="abstraction-handle inline cursor-pointer whitespace-pre-wrap text-blue-400 hover:text-blue-600"
             >
               {langInfo.lambdaSymbol.trim()}
-            </span>
+            </button>
           ) : (
             <span
               className={`${lambdaIsHandle ? "abstraction-handle" : ""} ${usedLambda ? "used-handle text-rose-300" : ""} whitespace-pre-wrap`}
@@ -236,12 +237,12 @@ function toDisplay(
             <span> </span>
           )}
           {hideConnector ? null : interactiveConnector ? (
-            <span
+            <button
               onClick={context.onClick}
-              className="abstraction-handle cursor-pointer whitespace-pre-wrap text-blue-400 hover:text-blue-600"
+              className="abstraction-handle inline cursor-pointer whitespace-pre-wrap text-blue-400 hover:text-blue-600"
             >
               {langInfo.connector.trim()}
-            </span>
+            </button>
           ) : (
             <span
               className={`${connectorIsHandle ? "abstraction-handle" : ""} ${usedConnector ? "used-handle text-rose-300" : ""} whitespace-pre-wrap`}
@@ -293,7 +294,7 @@ function toDisplay(
                 ),
             langInfo,
           )}
-          <span className="outline-2 outline-sky-600 [.application-container:has(>.paren-container>.result-container>.abstraction-container>.abstraction-handle:hover)>&]:outline">
+          <span className="outline-2 outline-sky-600 [.application-container:has(>.paren-container>.result-container-outer>.result-container-inner>.abstraction-container>.abstraction-handle:hover)>&]:outline">
             {parenthesizeIf(
               t.arg.type === "apply" ||
                 t.arg.type === "lambda" ||
@@ -314,13 +315,18 @@ function toDisplay(
     },
   );
   return (
-    // todo double span for double outline?
     <span
-      className={`result-container ${t.marker === "used-body" ? "outline-2 outline-offset-4 outline-rose-500 " : ""}
-      ${t.marker === "used-argument" ? "outline-2 outline-sky-600" : ""}
-      ${t.marker !== undefined ? "[.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline" : ""} `}
+      className={`result-container-outer
+        ${t.marker?.usedBody ? "outline-2 outline-offset-4 outline-rose-500  [.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline" : ""}
+        `}
     >
-      {result}
+      <span
+        className={`result-container-inner 
+          ${t.marker?.usedArgument ? "outline-2 outline-sky-600 [.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline " : ""}
+        `}
+      >
+        {result}
+      </span>
     </span>
   );
 }
@@ -469,6 +475,13 @@ export default function Home() {
         ))}
       </nav>
       <main className="flex flex-1 flex-col items-center gap-4 p-12 text-xl">
+        <div>
+          <span className="inline-flex outline">
+            <button>a</button>
+            <span>b</span>
+          </span>
+        </div>
+
         <div className="flex w-full items-center justify-center ">
           <div className="flex flex-1 justify-center gap-2">
             <button className="rounded-md bg-rose-400 p-2" onClick={reset}>
