@@ -12,12 +12,13 @@ import {
   splitNumberSubscript,
   naiveBetaNormalize,
   normalStrategyRedex,
-} from "./term";
+} from "./utils/term";
 
-import { Style, LangInfo, Lang, langData } from "./languages";
-import { abstractionStyle } from "./abstractionStyle";
+import { Style, LangInfo, Lang, langData } from "./utils/languages";
+import { abstractionStyle } from "./components/abstractionStyle";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
+import InlineButton from "./components/InlineButton";
 
 /*
 classes for rules:
@@ -200,13 +201,14 @@ function toDisplay(
       const used = context.used;
 
       const lambdaIsHandle = langInfo.abstractionHandle === "lambda-symbol";
-      const interactiveLambda = lambdaIsHandle && context.type === "redex";
-      const usedLambda = lambdaIsHandle && used;
-
       const connectorIsHandle = langInfo.abstractionHandle === "connector";
+
+      const usedLambda = lambdaIsHandle && used;
+      const usedConnector = connectorIsHandle && used;
+
+      const interactiveLambda = lambdaIsHandle && context.type === "redex";
       const interactiveConnector =
         connectorIsHandle && context.type === "redex";
-      const usedConnector = connectorIsHandle && used;
 
       console.assert(!(hideLambda && interactiveLambda));
       console.assert(!(hideLambda && usedLambda));
@@ -217,12 +219,12 @@ function toDisplay(
         <span className={`abstr-${t.variable} abstraction-container `}>
           {abstractionStyle(t.variable)}
           {hideLambda ? null : interactiveLambda ? (
-            <button
+            <InlineButton
               onClick={context.onClick}
               className="abstraction-handle inline cursor-pointer whitespace-pre-wrap text-blue-400 hover:text-blue-600"
             >
               {langInfo.lambdaSymbol.trim()}
-            </button>
+            </InlineButton>
           ) : (
             <span
               className={`${lambdaIsHandle ? "abstraction-handle" : ""} ${usedLambda ? "used-handle text-rose-300" : ""} whitespace-pre-wrap`}
@@ -237,12 +239,12 @@ function toDisplay(
             <span> </span>
           )}
           {hideConnector ? null : interactiveConnector ? (
-            <button
+            <InlineButton
               onClick={context.onClick}
               className="abstraction-handle inline cursor-pointer whitespace-pre-wrap text-blue-400 hover:text-blue-600"
             >
               {langInfo.connector.trim()}
-            </button>
+            </InlineButton>
           ) : (
             <span
               className={`${connectorIsHandle ? "abstraction-handle" : ""} ${usedConnector ? "used-handle text-rose-300" : ""} whitespace-pre-wrap`}
@@ -317,13 +319,13 @@ function toDisplay(
   return (
     <span
       className={`result-container-outer
-        ${t.marker?.usedBody ? "outline-2 outline-offset-4 outline-rose-500  [.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline" : ""}
+        ${t.marker?.usedBody ? " outline-2 outline-offset-4 outline-rose-500  [.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline" : ""}
         `}
     >
       <span
         className={`result-container-inner 
           ${t.marker?.usedArgument ? "outline-2 outline-sky-600 [.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline " : ""}
-        `}
+          `}
       >
         {result}
       </span>
@@ -475,13 +477,6 @@ export default function Home() {
         ))}
       </nav>
       <main className="flex flex-1 flex-col items-center gap-4 p-12 text-xl">
-        <div>
-          <span className="inline-flex outline">
-            <button>a</button>
-            <span>b</span>
-          </span>
-        </div>
-
         <div className="flex w-full items-center justify-center ">
           <div className="flex flex-1 justify-center gap-2">
             <button className="rounded-md bg-rose-400 p-2" onClick={reset}>
@@ -504,9 +499,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/*  
- className="flex w-full flex-col overflow-auto bg-zinc-900 outline outline-2 outline-rose-800"
- */}
         <div
           style={{ overflow: "auto" }}
           ref={parentRef}
