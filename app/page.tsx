@@ -445,14 +445,15 @@ export default function Home() {
   async function launchAuto() {
     let prevTerm = activeTerm;
     for (const { reduced, targetPath } of normalNormalization(activeTerm)) {
+      // we want to go on the macrotask queue so React can ever render
+      // at the beginning to prevent double call to launchAuto from bypassing it
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
       if (!autoRef.current) return;
       let prevTerm2 = prevTerm; // we love closures
       setHistory((history) => [...history, { term: prevTerm2, targetPath }]);
       setActiveTerm(reduced);
       prevTerm = reduced;
-
-      // we want to go on the macrotask queue so React can ever render
-      await new Promise((resolve) => setTimeout(resolve, 0));
     }
     setAuto(false);
   }
@@ -491,9 +492,15 @@ export default function Home() {
               <button
                 key={l}
                 onClick={() => setLang(l)}
-                className={`rounded-md ${lang == l ? "bg-gray-400" : "bg-gray-500"} p-2 hover:bg-gray-400`}
+                className={`rounded-md ${lang == l ? "bg-gray-400" : "bg-gray-500"} flex h-20 w-20 items-center justify-center p-2 hover:bg-gray-400`}
               >
-                <Image src={langData[l].image} alt={l} width={50} height={50} />
+                <Image
+                  src={langData[l].image}
+                  alt={l}
+                  width={100}
+                  height={100}
+                  className="h-full w-auto"
+                />
               </button>
             ))}
           </div>
@@ -525,7 +532,7 @@ export default function Home() {
                 return (
                   <div
                     key={virtualRow.key}
-                    className={`output-row-container flex  cursor-default items-center px-2 py-1 ${virtualRow.index % 2 == 1 ? "bg-zinc-800" : ""}`}
+                    className={`output-row-container flex  cursor-default px-2 py-1 ${virtualRow.index % 2 == 1 ? "bg-zinc-800" : ""}`}
                     ref={rowVirtualizer.measureElement}
                     data-index={virtualRow.index}
                   >
