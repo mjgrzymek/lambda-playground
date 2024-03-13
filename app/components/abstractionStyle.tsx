@@ -1,14 +1,14 @@
 export function abstractionStyle(variableName: string) {
   const x = variableName;
-  // #0284c7 = sky-600
+  // <div className="bg-lime-600"> </div>;
   return (
     <style jsx global>
       {`
         .abstr-${x}:is(:has(.var-${x}:hover):not(:has(.abstr-${x}:hover)),:has(>.abstraction-handle:hover))
           .var-${x}:not(.abstr-${x}:not(:hover) .var-${x}) {
-          color: #0284c7;
+          color: rgb(101 163 13);
           &.bind {
-            border-bottom: 1px solid #0284c7;
+            border-bottom: 1px solid rgb(101 163 13);
           }
         }
       `}

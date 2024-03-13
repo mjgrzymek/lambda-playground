@@ -1,6 +1,7 @@
 "use client";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { StopIcon, PlayIcon } from "@radix-ui/react-icons";
 
 import {
   Term,
@@ -483,8 +484,19 @@ export default function Home() {
             <button className="rounded-md bg-rose-400 p-2" onClick={reset}>
               Reset
             </button>
-            <button className="rounded-md bg-teal-600 p-2" onClick={toggleAuto}>
-              {auto ? "Stop" : "Auto"}
+            <button
+              className="flex items-center gap-1 rounded-md bg-teal-600 p-2"
+              onClick={toggleAuto}
+            >
+              {auto ? (
+                <>
+                  <StopIcon /> Stop
+                </>
+              ) : (
+                <>
+                  <PlayIcon /> Auto
+                </>
+              )}
             </button>
           </div>
           <div className="flex gap-1 ">

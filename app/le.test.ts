@@ -9,7 +9,7 @@ import {
   tlambda,
   tvar,
   cleanTerm,
-} from "./app/utils/term";
+} from "./utils/term";
 import _ from "lodash";
 
 describe("splitNumberSubscript", () => {
