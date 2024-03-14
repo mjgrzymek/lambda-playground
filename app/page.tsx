@@ -2,6 +2,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { StopIcon, PlayIcon } from "@radix-ui/react-icons";
+import { parseTerm } from "./utils/parsing";
 
 import {
   Term,
@@ -21,6 +22,7 @@ import { abstractionStyle } from "./components/abstractionStyle";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import InlineButton from "./components/InlineButton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 /*
 classes for rules:
@@ -123,11 +125,19 @@ function displayVariable(name: string, style: Style, className = "") {
     return <span className={`var-${name} ${className}`}>{name}</span>;
   }
   style satisfies Style.Math;
+
   const [base, sub] = splitNumberSubscript(name);
+  console.assert(base.length > 0);
+  const oneLetter = base.length === 1;
+  const displayBase = oneLetter ? toMathematicalItalic(base) : base;
+
   const subscripts = "₀₁₂₃₄₅₆₇₈₉";
+
   return (
-    <span className={`var-${name} ${className} p-[0.05rem]`}>
-      {toMathematicalItalic(base)}
+    <span
+      className={`var-${name} ${className} ${oneLetter ? "p-[0.05rem]" : "p-1"} `}
+    >
+      {displayBase}
       {[...sub].map((d) => subscripts[Number(d)]).join("")}
     </span>
   );
@@ -384,11 +394,13 @@ function* normalNormalization(term: Term) {
 }
 
 export default function Home() {
-  const [focusedTerm, setFocusedTerm] = useState<Term>(identitySquared);
+  const [inputTerm, setInputTerm] = useState("(x => x)y");
   const [history, setHistory] = useState<{ term: Term; targetPath: string }[]>(
     [],
   );
-  const [activeTerm, setActiveTerm] = useState<Term>(focusedTerm);
+  const [activeTerm, setActiveTerm] = useState<Term>(() =>
+    parseTerm(inputTerm),
+  );
   const [lang, setLang] = useState<Lang>(Lang.Python);
   const [auto, setAuto] = useState(false);
 
@@ -429,13 +441,18 @@ export default function Home() {
     },
     [activeTerm],
   );
+
   function reset() {
     setHistory([]);
-    setActiveTerm(focusedTerm);
+    try {
+      const term = parseTerm(inputTerm);
+      setActiveTerm(term);
+    } catch (e) {}
     setAuto(false);
   }
+
   function changeFocusedTerm(term: Term) {
-    setFocusedTerm(term);
+    // TODO setFocusedTerm(term);
     setHistory([]);
     setActiveTerm(term);
     setAuto(false);
@@ -482,6 +499,12 @@ export default function Home() {
       <main className="flex flex-1 flex-col items-center gap-4 p-12 text-xl">
         <div className="flex w-full items-center justify-center ">
           <div className="flex flex-1 justify-center gap-2">
+            <Input
+              type="text"
+              className="w-80 font-mono"
+              value={inputTerm}
+              onChange={(e) => setInputTerm(e.target.value)}
+            />
             <Button onClick={reset}>Reset</Button>
             <Button className="flex gap-1" onClick={toggleAuto}>
               {auto ? (
@@ -536,7 +559,7 @@ export default function Home() {
               }}
             >
               {items.map((virtualRow) => {
-                const { t, interactive, targetPath } = terms[virtualRow.index];
+                const { t, interactive, targetPath } = terms[virtualRow.index]!;
                 return (
                   <div
                     key={virtualRow.key}

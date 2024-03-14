@@ -43,9 +43,6 @@ const freeVariables = (t: Term): vName[] =>
     (t) => freeVariables(t.body).filter((v) => v !== t.variable),
     (t) => [...freeVariables(t.func), ...freeVariables(t.arg)],
   );
-const bad = (s: string) => {
-  throw new Error(s);
-};
 const rewrite = (t: Term, from: vName, to: Term): Term =>
   termElim(
     t,
@@ -120,7 +117,7 @@ export const normalStrategyRedex = (
 ): string | null => {
   return termElim(
     t,
-    (t) => null,
+    (_) => null,
     (t) => normalStrategyRedex(t.body, path + "d"),
     (t) =>
       isRedex(t)
@@ -135,7 +132,7 @@ export const splitNumberSubscript = (s: string): [string, string] => {
   if (match === null) {
     return ["", ""];
   }
-  return [match[1], match[2]];
+  return [match[1]!, match[2]!];
 };
 
 const newVar = (base: vName, exclude: vName[]): vName => {
@@ -171,7 +168,7 @@ export const alphaNormalizeTerm = (t: Term, bound: vName[] = []): Term =>
 const betaChildren = (t: Term): Term[] =>
   termElim<Term[]>(
     t,
-    (t) => [],
+    (_) => [],
     (t) => betaChildren(t.body).map((c) => tlambda(t.variable, c)),
     (t) => [
       ...betaChildren(t.func).map((c) => tapply(c, t.arg)),
@@ -232,7 +229,7 @@ export const naiveBetaNormalize = (t: Term): Term => {
     if (isBetaNormal(t)) {
       return cleanTerm(t);
     }
-    t = betaChildren(t)[0];
+    t = betaChildren(t)[0]!;
   }
   throw new Error("couldnt normalize");
 };
