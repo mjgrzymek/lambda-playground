@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inconsolata.variable} ${latinModernMath.variable}`}
+      className={`${inconsolata.variable} ${latinModernMath.variable} dark`}
     >
       <body className={inter.className}>{children}</body>
     </html>

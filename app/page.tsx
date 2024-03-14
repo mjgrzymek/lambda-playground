@@ -20,6 +20,7 @@ import { abstractionStyle } from "./components/abstractionStyle";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import InlineButton from "./components/InlineButton";
+import { Button } from "@/components/ui/button";
 
 /*
 classes for rules:
@@ -481,13 +482,8 @@ export default function Home() {
       <main className="flex flex-1 flex-col items-center gap-4 p-12 text-xl">
         <div className="flex w-full items-center justify-center ">
           <div className="flex flex-1 justify-center gap-2">
-            <button className="rounded-md bg-rose-400 p-2" onClick={reset}>
-              Reset
-            </button>
-            <button
-              className="flex items-center gap-1 rounded-md bg-teal-600 p-2"
-              onClick={toggleAuto}
-            >
+            <Button onClick={reset}>Reset</Button>
+            <Button className="flex gap-1" onClick={toggleAuto}>
               {auto ? (
                 <>
                   <StopIcon /> Stop
@@ -497,7 +493,7 @@ export default function Home() {
                   <PlayIcon /> Auto
                 </>
               )}
-            </button>
+            </Button>
           </div>
           <div className="flex gap-1 ">
             {Object.values(Lang).map((l) => (
