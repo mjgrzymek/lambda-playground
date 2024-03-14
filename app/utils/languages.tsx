@@ -47,7 +47,7 @@ export const langData: {
     connector: ".",
     multiArg: true,
     style: Style.Math,
-    image: "/tex-square.png",
+    image: "/tex-square-white.png",
     parenthesizeArg: false,
     abstractionHandle: "lambda-symbol",
   },

@@ -23,6 +23,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import InlineButton from "./components/InlineButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 /*
 classes for rules:
@@ -518,23 +519,25 @@ export default function Home() {
               )}
             </Button>
           </div>
-          <div className="flex gap-1 ">
+          <ToggleGroup type="single" variant={"outline"} size={"huge"}>
             {Object.values(Lang).map((l) => (
-              <button
+              <ToggleGroupItem
+                value={l}
+                aria-label={`Choose ${l}`}
                 key={l}
                 onClick={() => setLang(l)}
-                className={`rounded-md ${lang == l ? "bg-gray-400" : "bg-gray-500"} flex h-20 w-20 items-center justify-center p-2 hover:bg-gray-400`}
               >
                 <Image
                   src={langData[l].image}
                   alt={l}
-                  width={100}
-                  height={100}
+                  width={70}
+                  height={70}
+                  priority={true}
                   className="h-full w-auto"
                 />
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         </div>
 
         <div
