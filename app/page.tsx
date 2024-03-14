@@ -1,5 +1,12 @@
 "use client";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Image from "next/image";
 import { StopIcon, PlayIcon } from "@radix-ui/react-icons";
 import { parseTerm } from "./utils/parsing";
@@ -165,7 +172,12 @@ function toMathematicalItalic(text: string): string {
     .join("");
 }
 
-function parenthesizeIf(b: boolean, t: JSX.Element, langInfo: LangInfo) {
+function parenthesizeIf(
+  b: boolean,
+  t: React.ReactNode,
+  displayInfo: DisplayInfo,
+) {
+  const langInfo = displayInfo.langInfo;
   return b ? (
     <span className="paren-container">
       <span
@@ -186,11 +198,12 @@ function parenthesizeIf(b: boolean, t: JSX.Element, langInfo: LangInfo) {
   );
 }
 
-type Stuff = {
+type DisplayInfo = {
   langInfo: LangInfo;
-  pushReduce: (path: string) => void;
-  targetPath: string | null;
-  interactive: boolean;
+  pushReduce?: (path: string) => void;
+  targetPath?: string | null;
+  interactive?: boolean;
+  returnString: boolean;
 };
 
 function toDisplay(
@@ -200,14 +213,32 @@ function toDisplay(
     | { type: "redex"; onClick: () => void }
     | { type: "other"; onClick?: undefined }
   ) & { used?: boolean },
-  stuff: Stuff,
+  displayInfo: DisplayInfo,
   currentPath: string,
-): JSX.Element {
-  const { langInfo, pushReduce, interactive } = stuff;
+): React.ReactNode {
+  const { langInfo, pushReduce, interactive } = displayInfo;
   const result = termElim(
     t,
-    (t) => displayVariable(t.name, langInfo.style),
     (t) => {
+      if (displayInfo.returnString) {
+        return ` ${t.name} `;
+      }
+      return displayVariable(t.name, langInfo.style);
+    },
+    (t) => {
+      const body = toDisplay(
+        t.body,
+        {
+          type: "lambda",
+        },
+        displayInfo,
+        currentPath + "d",
+      );
+
+      if (displayInfo.returnString) {
+        return `${langInfo.stringLambdaSymbol}${t.variable}.${body}`;
+      }
+
       const hideLambda = context.type === "lambda" && langInfo.multiArg;
       const hideConnector = t.body.type === "lambda" && langInfo.multiArg;
 
@@ -269,66 +300,63 @@ function toDisplay(
             langInfo.connector.slice(-1) === " " && <span> </span>}
 
           <span className="outline-2 outline-rose-500 [.abstraction-container:has(>.abstraction-handle:hover)>&]:outline">
-            {toDisplay(
-              t.body,
-              {
-                type: "lambda",
-              },
-              stuff,
-              currentPath + "d",
-            )}
+            {body}
           </span>
         </span>
       );
     },
     (t) => {
+      const func = parenthesizeIf(
+        t.func.type === "lambda",
+        interactive && t.func.type === "lambda"
+          ? toDisplay(
+              t.func,
+              {
+                type: "redex",
+                onClick: () => {
+                  pushReduce!(currentPath);
+                },
+              },
+              displayInfo,
+              currentPath + "l",
+            )
+          : toDisplay(
+              t.func,
+              {
+                type: "other",
+                used: currentPath === displayInfo.targetPath,
+              },
+              displayInfo,
+              currentPath + "l",
+            ),
+        displayInfo,
+      );
+
+      const body = parenthesizeIf(
+        t.arg.type === "apply" ||
+          t.arg.type === "lambda" ||
+          langInfo.parenthesizeArg,
+        toDisplay(
+          t.arg,
+          {
+            type: "other",
+          },
+          displayInfo,
+          currentPath + "r",
+        ),
+        displayInfo,
+      );
       return (
         <span className="application-container ">
-          {parenthesizeIf(
-            t.func.type === "lambda",
-            interactive && t.func.type === "lambda"
-              ? toDisplay(
-                  t.func,
-                  {
-                    type: "redex",
-                    onClick: () => {
-                      pushReduce(currentPath);
-                    },
-                  },
-                  stuff,
-                  currentPath + "l",
-                )
-              : toDisplay(
-                  t.func,
-                  {
-                    type: "other",
-                    used: currentPath === stuff.targetPath,
-                  },
-                  stuff,
-                  currentPath + "l",
-                ),
-            langInfo,
-          )}
+          {func}
           <span className="outline-2 outline-sky-600 [.application-container:has(>.paren-container>.result-container-outer>.result-container-inner>.abstraction-container>.abstraction-handle:hover)>&]:outline">
-            {parenthesizeIf(
-              t.arg.type === "apply" ||
-                t.arg.type === "lambda" ||
-                langInfo.parenthesizeArg,
-              toDisplay(
-                t.arg,
-                {
-                  type: "other",
-                },
-                stuff,
-                currentPath + "r",
-              ),
-              langInfo,
-            )}
+            {body}
           </span>
         </span>
       );
     },
   );
+  if (displayInfo.returnString) return result;
   return (
     <span
       className={`result-container-outer
@@ -346,8 +374,19 @@ function toDisplay(
   );
 }
 
+function termToString(t: Term, langInfo: LangInfo): string {
+  const result = toDisplay(
+    t,
+    { type: "other" },
+    { langInfo, returnString: true },
+    "",
+  );
+  console.assert(typeof result === "string");
+  return result as unknown as string;
+}
+
 const ShowTerm = memo(
-  function ShowTerm({ t, stuff }: { t: Term; stuff: Stuff }) {
+  function ShowTerm({ t, stuff }: { t: Term; stuff: DisplayInfo }) {
     const { langInfo } = stuff;
     return (
       <span
@@ -580,6 +619,7 @@ export default function Home() {
                         pushReduce,
                         targetPath,
                         interactive: !auto && interactive,
+                        returnString: false,
                       }}
                     />
                   </div>
