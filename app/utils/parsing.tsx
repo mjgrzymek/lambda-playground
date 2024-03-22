@@ -2,7 +2,9 @@ import { Term } from "./term";
 
 function mkLambda(vars: string[], body: Term): Term {
   let res = body;
-  for (let v of vars.toReversed()) {
+  const vars2 = [...vars];
+  vars2.reverse();
+  for (let v of vars2) {
     res = { type: "lambda", variable: v, body: res };
   }
   return res;
@@ -47,10 +49,12 @@ export function parseTerm(term: string): Term {
     }
 
     while (true) {
+      // recursively for'ing doesn't work cause it calls .return() on stop
       const { value: c, done } = gen.next();
       if (done) break;
 
       if (c == "(") {
+        dropAcc();
         termAcc.push(parse());
       } else if (c === " ") {
         dropAcc();

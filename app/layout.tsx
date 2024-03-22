@@ -32,7 +32,7 @@ export default function RootLayout({
       lang="en"
       className={`${inconsolata.variable} ${latinModernMath.variable} dark`}
     >
-      <body className={inter.className}>{children}</body>
+      <body className={`${inter.className}`}>{children}</body>
     </html>
   );
 }

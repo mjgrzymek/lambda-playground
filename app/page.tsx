@@ -1,6 +1,5 @@
 "use client";
 import React, {
-  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -16,21 +15,19 @@ import {
   tapply,
   tvar,
   tlambda,
-  termElim,
   reduceAt,
   splitNumberSubscript,
   naiveBetaNormalize,
   normalStrategyRedex,
 } from "./utils/term";
 
-import { Style, LangInfo, Lang, langData } from "./utils/languages";
-import { abstractionStyle } from "./components/abstractionStyle";
+import { Style, Lang, langData } from "./utils/languages";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import InlineButton from "./components/InlineButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ShowTerm, termToString } from "./ShowTerm";
 
 /*
 classes for rules:
@@ -128,7 +125,7 @@ const eta = tlambda("x", tlambda("y", tapply(tvar("x"), tvar("y")))); // just th
 const alpha = tapply(tlambda("x", tlambda("y", tvar("x"))), tvar("y"));
 const alphaClosed = tlambda("y", alpha);
 
-function displayVariable(name: string, style: Style, className = "") {
+export function displayVariable(name: string, style: Style, className = "") {
   if (style === Style.Code) {
     return <span className={`var-${name} ${className}`}>{name}</span>;
   }
@@ -142,12 +139,16 @@ function displayVariable(name: string, style: Style, className = "") {
   const subscripts = "₀₁₂₃₄₅₆₇₈₉";
 
   return (
-    <span
-      className={`var-${name} ${className} ${oneLetter ? "p-[0.05rem]" : "p-1"} `}
-    >
-      {displayBase}
-      {[...sub].map((d) => subscripts[Number(d)]).join("")}
-    </span>
+    <>
+      <wbr />
+      <span
+        className={`var-${name} ${className} ${oneLetter ? "p-[0.05rem]" : "p-1"} `}
+      >
+        {displayBase}
+        {[...sub].map((d) => subscripts[Number(d)]).join("")}
+      </span>
+      <wbr />
+    </>
   );
 }
 
@@ -172,240 +173,20 @@ function toMathematicalItalic(text: string): string {
     .join("");
 }
 
-function parenthesizeIf(
-  b: boolean,
-  t: React.ReactNode,
-  displayInfo: DisplayInfo,
-) {
-  const langInfo = displayInfo.langInfo;
-  return b ? (
-    <span className="paren-container">
-      <span
-        className={`${langInfo.style === Style.Math ? "p-[0.07rem]" : ""} [.paren-container:has(>&:hover)>&]:text-red-600`}
-      >
-        (
-      </span>
-      {t}
-      <span
-        className={`${langInfo.style === Style.Math ? "p-[0.07rem]" : ""} [.paren-container:has(>&:hover)>&]:text-red-600`}
-      >
-        )
-      </span>
-    </span>
-  ) : (
-    // for :has()
-    <span className="paren-container">{t}</span>
-  );
-}
-
-type DisplayInfo = {
-  langInfo: LangInfo;
-  pushReduce?: (path: string) => void;
-  targetPath?: string | null;
-  interactive?: boolean;
-  returnString: boolean;
-};
-
-function toDisplay(
-  t: Term,
-  context: (
-    | { type: "lambda"; onClick?: undefined }
-    | { type: "redex"; onClick: () => void }
-    | { type: "other"; onClick?: undefined }
-  ) & { used?: boolean },
-  displayInfo: DisplayInfo,
-  currentPath: string,
-): React.ReactNode {
-  const { langInfo, pushReduce, interactive } = displayInfo;
-  const result = termElim(
-    t,
-    (t) => {
-      if (displayInfo.returnString) {
-        return ` ${t.name} `;
-      }
-      return displayVariable(t.name, langInfo.style);
-    },
-    (t) => {
-      const body = toDisplay(
-        t.body,
-        {
-          type: "lambda",
-        },
-        displayInfo,
-        currentPath + "d",
-      );
-
-      if (displayInfo.returnString) {
-        return `${langInfo.stringLambdaSymbol}${t.variable}.${body}`;
-      }
-
-      const hideLambda = context.type === "lambda" && langInfo.multiArg;
-      const hideConnector = t.body.type === "lambda" && langInfo.multiArg;
-
-      const used = context.used;
-
-      const lambdaIsHandle = langInfo.abstractionHandle === "lambda-symbol";
-      const connectorIsHandle = langInfo.abstractionHandle === "connector";
-
-      const usedLambda = lambdaIsHandle && used;
-      const usedConnector = connectorIsHandle && used;
-
-      const interactiveLambda = lambdaIsHandle && context.type === "redex";
-      const interactiveConnector =
-        connectorIsHandle && context.type === "redex";
-
-      console.assert(!(hideLambda && interactiveLambda));
-      console.assert(!(hideLambda && usedLambda));
-      console.assert(!(hideConnector && interactiveConnector));
-      console.assert(!(hideConnector && usedConnector));
-
-      return (
-        <span className={`abstr-${t.variable} abstraction-container `}>
-          {abstractionStyle(t.variable)}
-          {hideLambda ? null : interactiveLambda ? (
-            <InlineButton
-              onClick={context.onClick}
-              className="abstraction-handle inline cursor-pointer whitespace-pre-wrap text-blue-400 hover:text-blue-600"
-            >
-              {langInfo.lambdaSymbol.trim()}
-            </InlineButton>
-          ) : (
-            <span
-              className={`${lambdaIsHandle ? "abstraction-handle" : ""} ${usedLambda ? "used-handle text-rose-300" : ""} whitespace-pre-wrap`}
-            >
-              {langInfo.lambdaSymbol.trim()}
-            </span>
-          )}
-          {langInfo.lambdaSymbol !== "" &&
-            langInfo.lambdaSymbol.slice(-1) === " " && <span> </span>}
-          {displayVariable(t.variable, langInfo.style, "bind")}
-          {langInfo.connector !== "" && langInfo.connector[0] === " " && (
-            <span> </span>
-          )}
-          {hideConnector ? null : interactiveConnector ? (
-            <InlineButton
-              onClick={context.onClick}
-              className="abstraction-handle inline cursor-pointer whitespace-pre-wrap text-blue-400 hover:text-blue-600"
-            >
-              {langInfo.connector.trim()}
-            </InlineButton>
-          ) : (
-            <span
-              className={`${connectorIsHandle ? "abstraction-handle" : ""} ${usedConnector ? "used-handle text-rose-300" : ""} whitespace-pre-wrap`}
-            >
-              {langInfo.connector.trim()}
-            </span>
-          )}
-          {langInfo.connector !== "" &&
-            langInfo.connector.slice(-1) === " " && <span> </span>}
-
-          <span className="outline-2 outline-rose-500 [.abstraction-container:has(>.abstraction-handle:hover)>&]:outline">
-            {body}
-          </span>
-        </span>
-      );
-    },
-    (t) => {
-      const func = parenthesizeIf(
-        t.func.type === "lambda",
-        interactive && t.func.type === "lambda"
-          ? toDisplay(
-              t.func,
-              {
-                type: "redex",
-                onClick: () => {
-                  pushReduce!(currentPath);
-                },
-              },
-              displayInfo,
-              currentPath + "l",
-            )
-          : toDisplay(
-              t.func,
-              {
-                type: "other",
-                used: currentPath === displayInfo.targetPath,
-              },
-              displayInfo,
-              currentPath + "l",
-            ),
-        displayInfo,
-      );
-
-      const body = parenthesizeIf(
-        t.arg.type === "apply" ||
-          t.arg.type === "lambda" ||
-          langInfo.parenthesizeArg,
-        toDisplay(
-          t.arg,
-          {
-            type: "other",
-          },
-          displayInfo,
-          currentPath + "r",
-        ),
-        displayInfo,
-      );
-      return (
-        <span className="application-container ">
-          {func}
-          <span className="outline-2 outline-sky-600 [.application-container:has(>.paren-container>.result-container-outer>.result-container-inner>.abstraction-container>.abstraction-handle:hover)>&]:outline">
-            {body}
-          </span>
-        </span>
-      );
-    },
-  );
-  if (displayInfo.returnString) return result;
-  return (
-    <span
-      className={`result-container-outer
-        ${t.marker?.usedBody ? " outline-2 outline-offset-4 outline-rose-500  [.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline" : ""}
-        `}
-    >
-      <span
-        className={`result-container-inner 
-          ${t.marker?.usedArgument ? "outline-2 outline-sky-600 [.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline " : ""}
-          `}
-      >
-        {result}
-      </span>
-    </span>
-  );
-}
-
-function termToString(t: Term, langInfo: LangInfo): string {
-  const result = toDisplay(
-    t,
-    { type: "other" },
-    { langInfo, returnString: true },
-    "",
-  );
-  console.assert(typeof result === "string");
-  return result as unknown as string;
-}
-
-const ShowTerm = memo(
-  function ShowTerm({ t, stuff }: { t: Term; stuff: DisplayInfo }) {
-    const { langInfo } = stuff;
-    return (
-      <span
-        className={` ${langInfo.style === Style.Math ? "font-maths" : "font-mono"}`}
-      >
-        {toDisplay(t, { type: "other" }, stuff, "")}
-      </span>
-    );
-  },
-  (prev, next) =>
-    prev.stuff.interactive === false &&
-    next.stuff.interactive === false &&
-    prev.t === next.t &&
-    prev.stuff.langInfo === next.stuff.langInfo &&
-    prev.stuff.targetPath === next.stuff.targetPath,
-);
+const Y = "(f => (x => f(x x))(x => f(x x)))";
+const pred = "(n.f.x. n(g.h. h(g f))(u. x)(u. u))";
+const str_mul = "(a.b.f.x. a(b f) x)";
+const str_false = "(x.y. y)";
+const str_true = "(x.y. x)";
+const iszero = `(n. n(x. ${str_false}) ${str_true})`;
+const sone = `(f x . f x)`;
+const szero = `(f x . x)`;
+const stwo = `(f x . f (f x))`;
+const sfour = `(f x . f (f (f (f x))))`;
 
 const identitySquared = tapply(I, I);
 const examples: { name: string; term: Term }[] = [
+  { name: "Hello", term: parseTerm("(x . h e x x o)(l)") },
   { name: "identity squared", term: identitySquared },
   { name: "infinite loop", term: omega },
   { name: "optional infinite loop", term: optionalOmega },
@@ -417,7 +198,20 @@ const examples: { name: string; term: Term }[] = [
   { name: "2 + 2", term: tapply(tapply(add, two), two) },
   { name: "3 * 2", term: threeTimesTwo },
   { name: "3 ^ 3", term: threeToThree },
-  //TODO: add Y comb
+  {
+    name: "Y Combinator",
+    term: parseTerm("(f => (x => f(x x))(x => f(x x)))"),
+  },
+  {
+    name: "test",
+    term: parseTerm(`${iszero}(f x .  x )`),
+  },
+  {
+    name: "4 factorial",
+    term: parseTerm(
+      `${Y}(f x . ${iszero} x  ${sone} (${str_mul} x (f (${pred} x)) ) )${stwo}`,
+    ),
+  },
 ];
 
 function* normalNormalization(term: Term) {
@@ -444,6 +238,15 @@ export default function Home() {
   const [lang, setLang] = useState<Lang>(Lang.Python);
   const [auto, setAuto] = useState(false);
 
+  const inputPlaceholder = useMemo(
+    () =>
+      termToString(
+        tapply(tlambda("x", tapply(tvar("x"), tvar("x"))), tvar("y")),
+        langData[lang],
+      ),
+    [lang],
+  );
+
   const langInfo = langData[lang];
   const terms: { t: Term; targetPath: string | null; interactive: boolean }[] =
     useMemo(
@@ -463,8 +266,25 @@ export default function Home() {
     count: terms.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 100, // ??
-    overscan: 1,
+    overscan: 0,
   });
+
+  const parsedInputTerm = useMemo(() => {
+    try {
+      return parseTerm(inputTerm);
+    } catch (e) {
+      return null;
+    }
+  }, [inputTerm]);
+
+  const parseError = parsedInputTerm === null;
+
+  function changeLang(l: Lang) {
+    setLang(l);
+    if (parsedInputTerm !== null) {
+      setInputTerm(termToString(parsedInputTerm, langData[l]));
+    }
+  }
 
   function toggleAuto() {
     autoRef.current = !auto;
@@ -484,15 +304,15 @@ export default function Home() {
 
   function reset() {
     setHistory([]);
-    try {
-      const term = parseTerm(inputTerm);
-      setActiveTerm(term);
-    } catch (e) {}
     setAuto(false);
+    if (parsedInputTerm !== null) {
+      setActiveTerm(parsedInputTerm);
+      setInputTerm(termToString(parsedInputTerm, langData[lang]));
+    }
   }
 
   function changeFocusedTerm(term: Term) {
-    // TODO setFocusedTerm(term);
+    setInputTerm(termToString(term, langData[lang]));
     setHistory([]);
     setActiveTerm(term);
     setAuto(false);
@@ -541,9 +361,10 @@ export default function Home() {
           <div className="flex flex-1 justify-center gap-2">
             <Input
               type="text"
-              className="w-80 font-mono"
+              className={` font-mono ${parseError ? "ring-2 ring-red-600" : ""} w-96`}
               value={inputTerm}
               onChange={(e) => setInputTerm(e.target.value)}
+              placeholder={inputPlaceholder}
             />
             <Button onClick={reset}>Reset</Button>
             <Button className="flex gap-1" onClick={toggleAuto}>
@@ -558,14 +379,21 @@ export default function Home() {
               )}
             </Button>
           </div>
-          <ToggleGroup type="single" variant={"outline"} size={"huge"}>
+          <ToggleGroup
+            type="single"
+            variant={"outline"}
+            size={"huge"}
+            value={lang}
+            onValueChange={(x) => {
+              if (x) {
+                changeLang(x as Lang);
+              } else {
+                changeLang(lang);
+              }
+            }}
+          >
             {Object.values(Lang).map((l) => (
-              <ToggleGroupItem
-                value={l}
-                aria-label={`Choose ${l}`}
-                key={l}
-                onClick={() => setLang(l)}
-              >
+              <ToggleGroupItem value={l} aria-label={`Choose ${l}`} key={l}>
                 <Image
                   src={langData[l].image}
                   alt={l}
