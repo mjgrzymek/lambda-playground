@@ -272,36 +272,32 @@ export default function Home() {
     setAuto(false);
   }
 
+  // to signal on/off to the async function
   const autoRef = useRef(auto);
   autoRef.current = auto;
 
+  // to prevent double run
+  const autoCounterRef = useRef(0);
+
   async function launchAuto() {
-    console.log("entering launchAuto");
+    autoCounterRef.current += 1;
+    const myCounter = autoCounterRef.current;
     const term = activeTerm;
     const knownSafeSpeedup = // TODO: make not a hack, worker that checks normalization?
       JSON.stringify(term) === JSON.stringify(factorial4);
     let prevTerm = term;
-    let i = 0;
-    function isRerenderingTime(): boolean {
-      if (knownSafeSpeedup) {
-        return false;
-      }
-      return true;
-    }
     for (const { reduced, targetPath } of normalNormalization(activeTerm)) {
-      if (isRerenderingTime()) {
+      if (!knownSafeSpeedup) {
         // we want to go on the macrotask queue so React can ever render
         // at the beginning to prevent double call to launchAuto from bypassing it
         await new Promise((resolve) => setTimeout(resolve, 0));
       }
 
-      if (!autoRef.current) return;
+      if (!autoRef.current || myCounter !== autoCounterRef.current) return;
       let prevTerm2 = prevTerm; // we love closures
       setHistory((history) => [...history, { term: prevTerm2, targetPath }]);
       setActiveTerm(reduced);
       prevTerm = reduced;
-
-      i += 1;
     }
     setAuto(false);
   }
