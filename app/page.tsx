@@ -134,7 +134,11 @@ const iszero = `(n. n(x. ${str_false}) ${str_true})`;
 const sone = `(f x . f x)`;
 const szero = `(f x . x)`;
 const stwo = `(f x . f (f x))`;
+const sthree = `(f x . f (f (f x)))`;
 const sfour = `(f x . f (f (f (f x))))`;
+const factorial4 = parseTerm(
+  `${Y}(f x . ${iszero} x  ${sone} (${str_mul} x (f (${pred} x)) ) )${sfour}`,
+);
 
 const identitySquared = tapply(I, I);
 const examples: { name: string; term: Term }[] = [
@@ -160,9 +164,7 @@ const examples: { name: string; term: Term }[] = [
   },
   {
     name: "4 factorial",
-    term: parseTerm(
-      `${Y}(f x . ${iszero} x  ${sone} (${str_mul} x (f (${pred} x)) ) )${stwo}`,
-    ),
+    term: factorial4,
   },
 ];
 
@@ -274,17 +276,32 @@ export default function Home() {
   autoRef.current = auto;
 
   async function launchAuto() {
-    let prevTerm = activeTerm;
+    console.log("entering launchAuto");
+    const term = activeTerm;
+    const knownSafeSpeedup = // TODO: make not a hack, worker that checks normalization?
+      JSON.stringify(term) === JSON.stringify(factorial4);
+    let prevTerm = term;
+    let i = 0;
+    function isRerenderingTime(): boolean {
+      if (knownSafeSpeedup) {
+        return false;
+      }
+      return true;
+    }
     for (const { reduced, targetPath } of normalNormalization(activeTerm)) {
-      // we want to go on the macrotask queue so React can ever render
-      // at the beginning to prevent double call to launchAuto from bypassing it
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (isRerenderingTime()) {
+        // we want to go on the macrotask queue so React can ever render
+        // at the beginning to prevent double call to launchAuto from bypassing it
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
 
       if (!autoRef.current) return;
       let prevTerm2 = prevTerm; // we love closures
       setHistory((history) => [...history, { term: prevTerm2, targetPath }]);
       setActiveTerm(reduced);
       prevTerm = reduced;
+
+      i += 1;
     }
     setAuto(false);
   }

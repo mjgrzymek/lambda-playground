@@ -245,27 +245,3 @@ const succ = tlambda(
     ),
   ),
 );
-//  \n \f \x (f(nfx))
-/*
-const one = naiveBetaNormalize(tapply(succ, zero));
-const two = naiveBetaNormalize(tapply(succ, one));
-const three = naiveBetaNormalize(tapply(succ, two));
-const threeToThree = tapply(three, three);
-
-const t = alphaNormalizeTerm(tapply(three, three));
-const g = buildGraph(t);
-const d = getDistances(g, t);
-
-function uglyPrint(t: term): string {
-  return termElim(
-    t,
-    (t) => t.name,
-    (t) => `(λ${t.variable}.${uglyPrint(t.body)})`,
-    (t) => `(${uglyPrint(t.func)} ${uglyPrint(t.arg)})`,
-  );
-}
-
-for (const [k, v] of d.entries()) {
-  console.log(v, isBetaNormal(k), uglyPrint(k));
-}
-*/
