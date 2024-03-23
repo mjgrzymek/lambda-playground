@@ -1,9 +1,9 @@
 "use client";
 import React, { memo } from "react";
-import { Term, splitNumberSubscript, termElim } from "./utils/term";
-import { Style, LangInfo } from "./utils/languages";
-import { abstractionStyle } from "./components/abstractionStyle";
-import InlineButton from "./components/InlineButton";
+import { Term, splitNumberSubscript, termElim } from "../utils/term";
+import { Style, LangInfo } from "../utils/languages";
+import { abstractionStyle } from "./abstractionStyle";
+import InlineButton from "./InlineButton";
 
 export function displayVariable(name: string, style: Style, className = "") {
   if (style === Style.Code) {

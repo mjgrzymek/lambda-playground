@@ -11,7 +11,7 @@ import {
   cleanTerm,
 } from "./utils/term";
 
-import { termToString } from "./ShowTerm";
+import { termToString } from "./components/ShowTerm";
 import { parseTerm } from "./utils/parsing";
 
 import _ from "lodash";

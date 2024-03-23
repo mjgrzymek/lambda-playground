@@ -27,7 +27,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ShowTerm, termToString } from "./ShowTerm";
+import { ShowTerm, termToString } from "./components/ShowTerm";
 
 /*
 classes for rules:
