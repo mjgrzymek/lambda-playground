@@ -293,7 +293,9 @@ export default function Home() {
         await new Promise((resolve) => setTimeout(resolve, 0));
       }
 
-      if (!autoRef.current || myCounter !== autoCounterRef.current) return;
+      if (!autoRef.current || myCounter !== autoCounterRef.current) {
+        return;
+      }
       let prevTerm2 = prevTerm; // we love closures
       setHistory((history) => [...history, { term: prevTerm2, targetPath }]);
       setActiveTerm(reduced);

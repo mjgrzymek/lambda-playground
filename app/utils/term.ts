@@ -66,15 +66,6 @@ const rewrite = (t: Term, from: vName, to: Term): Term =>
 const isRedex = (t: Term): boolean =>
   t.type === "apply" && t.func.type === "lambda";
 
-export function cleanTerm(t: Term): Term {
-  return termElim<Term>(
-    t,
-    (t) => tvar(t.name),
-    (t) => tlambda(t.variable, cleanTerm(t.body)),
-    (t) => tapply(cleanTerm(t.func), cleanTerm(t.arg)),
-  );
-}
-
 function reduce(t: Term): Term {
   if (t.type !== "apply" || t.func.type !== "lambda") {
     throw new Error("reduce at invalid point");
@@ -96,7 +87,6 @@ export function reduceAt(
   targetPath: string,
   currentPath: string = "",
 ): Term {
-  term = cleanTerm(term);
   return termElim<Term>(
     term,
     (t) => t,
@@ -227,7 +217,7 @@ export const isBetaNormal = (t: Term): boolean => betaChildren(t).length === 0;
 export const naiveBetaNormalize = (t: Term): Term => {
   for (let i = 0; i < 30; i++) {
     if (isBetaNormal(t)) {
-      return cleanTerm(t);
+      return t;
     }
     t = betaChildren(t)[0]!;
   }
