@@ -19,6 +19,8 @@ import {
   splitNumberSubscript,
   naiveBetaNormalize,
   normalStrategyRedex,
+  normalNormalization,
+  NormalizationStep,
 } from "./utils/term";
 
 import { Style, Lang, langData } from "./utils/languages";
@@ -159,27 +161,10 @@ const examples: { name: string; term: Term }[] = [
     term: parseTerm("(f => (x => f(x x))(x => f(x x)))"),
   },
   {
-    name: "test",
-    term: parseTerm(`${iszero}(f x .  x )`),
-  },
-  {
     name: "4 factorial",
     term: factorial4,
   },
 ];
-
-function* normalNormalization(term: Term) {
-  while (true) {
-    const targetPath = normalStrategyRedex(term);
-    if (targetPath === null) {
-      return;
-    }
-    const reduced = reduceAt(term, targetPath);
-    yield { reduced, targetPath };
-
-    term = reduced;
-  }
-}
 
 export default function Home() {
   const [inputTerm, setInputTerm] = useState("(x => x)y");
@@ -282,25 +267,51 @@ export default function Home() {
   async function launchAuto() {
     autoCounterRef.current += 1;
     const myCounter = autoCounterRef.current;
+
     const term = activeTerm;
-    const knownSafeSpeedup = // TODO: make not a hack, worker that checks normalization?
-      JSON.stringify(term) === JSON.stringify(factorial4);
+
+    const worker = new Worker(
+      new URL("./utils/normalizationWorker.ts", import.meta.url),
+      { type: "module" },
+    );
+    let result: null | NormalizationStep[] = null;
+    worker.onmessage = (event: any) => {
+      result = event.data;
+    };
+    worker.postMessage(term);
+    setTimeout(() => {
+      worker.terminate();
+    }, 8000);
+
     let prevTerm = term;
     for (const { reduced, targetPath } of normalNormalization(activeTerm)) {
-      if (!knownSafeSpeedup) {
-        // we want to go on the macrotask queue so React can ever render
-        // at the beginning to prevent double call to launchAuto from bypassing it
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      }
+      // we want to go on the macrotask queue so React can ever render
+      // at the beginning to prevent double call to launchAuto from bypassing it
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       if (!autoRef.current || myCounter !== autoCounterRef.current) {
+        worker.terminate();
         return;
+      }
+
+      if (result !== null) {
+        result = result as NormalizationStep[];
+        const last = result.pop()!.reduced;
+        setActiveTerm(last);
+        setHistory(
+          result.map(({ reduced, targetPath }) => ({
+            term: reduced,
+            targetPath,
+          })),
+        );
+        break;
       }
       let prevTerm2 = prevTerm; // we love closures
       setHistory((history) => [...history, { term: prevTerm2, targetPath }]);
       setActiveTerm(reduced);
       prevTerm = reduced;
     }
+    worker.terminate();
     setAuto(false);
   }
 

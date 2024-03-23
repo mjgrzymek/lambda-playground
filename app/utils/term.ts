@@ -167,41 +167,6 @@ const betaChildren = (t: Term): Term[] =>
     ],
   );
 
-type graph = Map<string, Term[]>;
-
-const buildGraph = (t: Term): graph => {
-  const g: graph = new Map();
-  const stack = [t];
-  while (stack.length > 0) {
-    if (g.size % 500 === 0) console.log(g.size, stack.length);
-    const t = stack.pop()!;
-    if (g.has(JSON.stringify(t))) {
-      continue;
-    }
-    const kids = betaChildren(t).map((t) => alphaNormalizeTerm(t));
-    g.set(JSON.stringify(t), kids);
-    stack.push(...kids);
-  }
-  return g;
-};
-
-const getDistances = (g: graph, t: Term): Map<Term, number> => {
-  const distances = new Map<Term, number>();
-  const queue = [t];
-  distances.set(t, 0);
-  while (queue.length > 0) {
-    const t = queue.shift()!;
-    const d = distances.get(t)!;
-    for (const c of g.get(JSON.stringify(t))!) {
-      if (!distances.has(c)) {
-        distances.set(c, d + 1);
-        queue.push(c);
-      }
-    }
-  }
-  return distances;
-};
-
 export const naiveBetaNormalForms = (t: Term, depth: number): Term[] => {
   if (isBetaNormal(t)) {
     return [t];
@@ -212,7 +177,8 @@ export const naiveBetaNormalForms = (t: Term, depth: number): Term[] => {
   return betaChildren(t).flatMap((c) => naiveBetaNormalForms(c, depth - 1));
 };
 
-export const isBetaNormal = (t: Term): boolean => betaChildren(t).length === 0;
+export const isBetaNormal = (t: Term): boolean =>
+  normalStrategyRedex(t) === null;
 
 export const naiveBetaNormalize = (t: Term): Term => {
   for (let i = 0; i < 30; i++) {
@@ -224,14 +190,20 @@ export const naiveBetaNormalize = (t: Term): Term => {
   throw new Error("couldnt normalize");
 };
 
-const zero = tlambda("f", tlambda("x", tvar("x")));
-const succ = tlambda(
-  "n",
-  tlambda(
-    "f",
-    tlambda(
-      "x",
-      tapply(tvar("f"), tapply(tapply(tvar("n"), tvar("f")), tvar("x"))),
-    ),
-  ),
-);
+export type NormalizationStep = {
+  reduced: Term;
+  targetPath: string;
+};
+
+export function* normalNormalization(term: Term): Generator<NormalizationStep> {
+  while (true) {
+    const targetPath = normalStrategyRedex(term);
+    if (targetPath === null) {
+      return;
+    }
+    const reduced = reduceAt(term, targetPath);
+    yield { reduced, targetPath };
+
+    term = reduced;
+  }
+}
