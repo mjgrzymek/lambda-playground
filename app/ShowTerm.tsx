@@ -1,10 +1,57 @@
 "use client";
 import React, { memo } from "react";
-import { Term, termElim } from "./utils/term";
+import { Term, splitNumberSubscript, termElim } from "./utils/term";
 import { Style, LangInfo } from "./utils/languages";
 import { abstractionStyle } from "./components/abstractionStyle";
 import InlineButton from "./components/InlineButton";
-import { displayVariable } from "./page";
+
+export function displayVariable(name: string, style: Style, className = "") {
+  if (style === Style.Code) {
+    return <span className={`var-${name} ${className}`}>{name}</span>;
+  }
+  style satisfies Style.Math;
+
+  const [base, sub] = splitNumberSubscript(name);
+  console.assert(base.length > 0);
+  const oneLetter = base.length === 1;
+  const displayBase = oneLetter ? toMathematicalItalic(base) : base;
+
+  const subscripts = "₀₁₂₃₄₅₆₇₈₉";
+
+  return (
+    <>
+      <wbr />
+      <span
+        className={`var-${name} ${className} ${oneLetter ? "p-[0.05rem]" : "p-1"} `}
+      >
+        {displayBase}
+        {[...sub].map((d) => subscripts[Number(d)]).join("")}
+      </span>
+      <wbr />
+    </>
+  );
+}
+
+function toMathematicalItalic(text: string): string {
+  return Array.from(text)
+    .map((char) => {
+      // h is a special case.... okayy
+      if (char === "h") return "ℎ";
+      if (char >= "a" && char <= "z") {
+        // Unicode range for italic lowercase letters starts at U+1D44E
+        const codePoint = 0x1d44e + char.charCodeAt(0) - "a".charCodeAt(0);
+        return String.fromCodePoint(codePoint);
+      } else if (char >= "A" && char <= "Z") {
+        // Unicode range for italic uppercase letters starts at U+1D434
+        const codePoint = 0x1d434 + char.charCodeAt(0) - "A".charCodeAt(0);
+        return String.fromCodePoint(codePoint);
+      } else {
+        // Return the original character if it's not a letter
+        return char;
+      }
+    })
+    .join("");
+}
 
 function parenthesizeIf(
   b: boolean,

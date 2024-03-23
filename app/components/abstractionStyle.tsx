@@ -1,5 +1,6 @@
-export function abstractionStyle(variableName: string) {
+export function abstractionStyle(_variableName: string) {
   return <> </>;
+  /*
   const x = variableName;
   // <div className="bg-lime-600"> </div>;
   return (
@@ -14,5 +15,5 @@ export function abstractionStyle(variableName: string) {
         }
       `}
     </style>
-  );
+  );*/
 }
