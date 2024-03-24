@@ -35,21 +35,30 @@ export const termElim = <T>(
       throw new Error("exhaustive check failed", _exhaustiveCheck);
   }
 };
-const freeVariables = (t: Term): vName[] =>
-  termElim(
-    t,
-    (t) => [t.name],
-    (t) => freeVariables(t.body).filter((v) => v !== t.variable),
-    (t) => [...freeVariables(t.func), ...freeVariables(t.arg)],
-  );
-const rewrite = (t: Term, from: vName, to: Term): Term =>
-  termElim(
-    t,
-    (t) => (t.name === from ? to : t),
-    (t) => {
+const freeVariables = (t: Term): vName[] => {
+  switch (t.type) {
+    case "variable":
+      return [t.name];
+    case "lambda":
+      return freeVariables(t.body).filter((v) => v !== t.variable);
+    case "apply":
+      return [...freeVariables(t.func), ...freeVariables(t.arg)];
+  }
+};
+
+const rewrite_ = (
+  t: Term,
+  from: vName,
+  to: Term,
+  toFreeVars: Set<vName>,
+): Term => {
+  switch (t.type) {
+    case "variable":
+      return t.name === from ? to : t;
+    case "lambda": {
       if (t.variable === from) return t;
-      if (!freeVariables(to).includes(t.variable)) {
-        return tlambda(t.variable, rewrite(t.body, from, to));
+      if (!toFreeVars.has(t.variable)) {
+        return tlambda(t.variable, rewrite_(t.body, from, to, toFreeVars));
       }
       const newArg = newVar(t.variable, [
         ...freeVariables(to),
@@ -57,11 +66,26 @@ const rewrite = (t: Term, from: vName, to: Term): Term =>
       ]);
       return tlambda(
         newArg,
-        rewrite(rewrite(t.body, t.variable, tvar(newArg)), from, to),
+        rewrite_(
+          rewrite_(t.body, t.variable, tvar(newArg), new Set([newArg])),
+          from,
+          to,
+          toFreeVars,
+        ),
       );
-    },
-    (t) => tapply(rewrite(t.func, from, to), rewrite(t.arg, from, to)),
-  );
+    }
+    case "apply":
+      return tapply(
+        rewrite_(t.func, from, to, toFreeVars),
+        rewrite_(t.arg, from, to, toFreeVars),
+      );
+  }
+};
+
+function rewrite(t: Term, from: vName, to: Term): Term {
+  const toFreeVars = new Set(freeVariables(to));
+  return rewrite_(t, from, to, toFreeVars);
+}
 
 const isRedex = (t: Term): boolean =>
   t.type === "apply" && t.func.type === "lambda";
@@ -77,41 +101,46 @@ function reduce(t: Term): Term {
 }
 
 export function reduceAt(
-  term: Term,
+  t: Term,
   targetPath: string,
   currentPath: string = "",
 ): Term {
   if (!targetPath.startsWith(currentPath)) {
-    return term;
+    return t;
   }
-  return termElim<Term>(
-    term,
-    (t) => t,
-    (t) => tlambda(t.variable, reduceAt(t.body, targetPath, currentPath + "d")),
-    (t) =>
-      currentPath === targetPath
+  switch (t.type) {
+    case "variable":
+      return t;
+    case "lambda":
+      return tlambda(
+        t.variable,
+        reduceAt(t.body, targetPath, currentPath + "d"),
+      );
+    case "apply":
+      return currentPath === targetPath
         ? reduce(t)
         : tapply(
             reduceAt(t.func, targetPath, currentPath + "l"),
             reduceAt(t.arg, targetPath, currentPath + "r"),
-          ),
-  );
+          );
+  }
 }
 
 export const normalStrategyRedex = (
   t: Term,
   path: string = "",
 ): string | null => {
-  return termElim(
-    t,
-    (_) => null,
-    (t) => normalStrategyRedex(t.body, path + "d"),
-    (t) =>
-      isRedex(t)
+  switch (t.type) {
+    case "variable":
+      return null;
+    case "lambda":
+      return normalStrategyRedex(t.body, path + "d");
+    case "apply":
+      return isRedex(t)
         ? path
         : normalStrategyRedex(t.func, path + "l") ??
-          normalStrategyRedex(t.arg, path + "r"),
-  );
+            normalStrategyRedex(t.arg, path + "r");
+  }
 };
 
 export const splitNumberSubscript = (s: string): [string, string] => {
@@ -131,11 +160,12 @@ const newVar = (base: vName, exclude: vName[]): vName => {
   }
 };
 
-export const alphaNormalizeTerm = (t: Term, bound: vName[] = []): Term =>
-  termElim<Term>(
-    t,
-    (t) => t,
-    (t) => {
+export function alphaNormalizeTerm(t: Term, bound: vName[] = []): Term {
+  switch (t.type) {
+    case "variable":
+      return t;
+
+    case "lambda": {
       const newArg = newVar("x", bound);
       return tlambda(
         newArg,
@@ -144,13 +174,15 @@ export const alphaNormalizeTerm = (t: Term, bound: vName[] = []): Term =>
           newArg,
         ]),
       );
-    },
-    (t) =>
-      tapply(
+    }
+
+    case "apply":
+      return tapply(
         alphaNormalizeTerm(t.func, bound),
         alphaNormalizeTerm(t.arg, bound),
-      ),
-  );
+      );
+  }
+}
 
 const betaChildren = (t: Term): Term[] =>
   termElim<Term[]>(

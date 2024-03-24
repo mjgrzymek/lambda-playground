@@ -1,6 +1,6 @@
 import { Term, normalNormalization } from "./term";
 
-addEventListener("message", async (event) => {
+async function handleEvent(event: MessageEvent) {
   const term: Term = event.data;
 
   const result = [];
@@ -11,4 +11,6 @@ addEventListener("message", async (event) => {
 
   postMessage(result);
   close();
-});
+}
+
+addEventListener("message", handleEvent);

@@ -265,9 +265,10 @@ export default function Home() {
       result = event.data;
     };
     worker.postMessage(term);
+    const normalizationTimeout = 3 * 1000;
     setTimeout(() => {
       worker.terminate();
-    }, 8000);
+    }, normalizationTimeout);
 
     let prevTerm = term;
     for (const { reduced, targetPath } of normalNormalization(activeTerm)) {

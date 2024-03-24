@@ -122,10 +122,11 @@ test("beta normal is unique", () => {
   });
 });
 
-test("factorial 4 test", () => {
-  const time = performance.now();
-  const result = getNormalForm(factorial4);
-  const elapsed = performance.now() - time;
-  console.log(termToString(result, langData[Lang.Tex]));
-  console.log(elapsed);
+describe("testing stuff", () => {
+  test("factorial 4 test", () => {
+    console.time();
+    const result = getNormalForm(factorial4);
+    console.log(termToString(result, langData[Lang.Tex]));
+    console.timeEnd();
+  });
 });
