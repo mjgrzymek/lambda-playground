@@ -1,3 +1,5 @@
+import { parseTerm } from "./parsing";
+
 type vName = string;
 
 export type varTerm = { type: "variable"; name: vName };
@@ -46,8 +48,9 @@ const rewrite = (t: Term, from: vName, to: Term): Term =>
     (t) => (t.name === from ? to : t),
     (t) => {
       if (t.variable === from) return t;
-      if (!freeVariables(to).includes(t.variable))
+      if (!freeVariables(to).includes(t.variable)) {
         return tlambda(t.variable, rewrite(t.body, from, to));
+      }
       const newArg = newVar(t.variable, [
         ...freeVariables(to),
         ...freeVariables(t.body),
@@ -67,14 +70,9 @@ function reduce(t: Term): Term {
   if (t.type !== "apply" || t.func.type !== "lambda") {
     throw new Error("reduce at invalid point");
   } else {
-    const markedArg = {
-      ...t.arg,
-      marker: { usedArgument: true } as const,
-    };
-    const rw = rewrite(t.func.body, t.func.variable, markedArg);
-    return {
-      ...rw,
-    };
+    //TODO here was marker
+    const rw = rewrite(t.func.body, t.func.variable, t.arg);
+    return rw;
   }
 }
 
@@ -83,6 +81,9 @@ export function reduceAt(
   targetPath: string,
   currentPath: string = "",
 ): Term {
+  if (!targetPath.startsWith(currentPath)) {
+    return term;
+  }
   return termElim<Term>(
     term,
     (t) => t,
@@ -186,6 +187,16 @@ export const naiveBetaNormalize = (t: Term): Term => {
   throw new Error("couldnt normalize");
 };
 
+export function getNormalForm(t: Term) {
+  while (true) {
+    const targetPath = normalStrategyRedex(t);
+    if (targetPath === null) {
+      return t;
+    }
+    t = reduceAt(t, targetPath);
+  }
+}
+
 export type NormalizationStep = {
   reduced: Term;
   targetPath: string;
@@ -203,3 +214,18 @@ export function* normalNormalization(term: Term): Generator<NormalizationStep> {
     term = reduced;
   }
 }
+
+const Y = "(f => (x => f(x x))(x => f(x x)))";
+const pred = "(n.f.x. n(g.h. h(g f))(u. x)(u. u))";
+const str_mul = "(a.b.f.x. a(b f) x)";
+const str_false = "(x.y. y)";
+const str_true = "(x.y. x)";
+const iszero = `(n. n(x. ${str_false}) ${str_true})`;
+const sone = `(f x . f x)`;
+const szero = `(f x . x)`;
+const stwo = `(f x . f (f x))`;
+const sthree = `(f x . f (f (f x)))`;
+const sfour = `(f x . f (f (f (f x))))`;
+export const factorial4 = parseTerm(
+  `${Y}(f x . ${iszero} x  ${sone} (${str_mul} x (f (${pred} x)) ) )${sfour}`,
+);

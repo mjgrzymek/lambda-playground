@@ -22,6 +22,7 @@ import {
   normalNormalization,
   NormalizationStep,
   isBetaNormal,
+  factorial4,
 } from "./utils/term";
 
 import { Style, Lang, langData } from "./utils/languages";
@@ -128,21 +129,6 @@ const eta = tlambda("x", tlambda("y", tapply(tvar("x"), tvar("y")))); // just th
 const alpha = tapply(tlambda("x", tlambda("y", tvar("x"))), tvar("y"));
 const alphaClosed = tlambda("y", alpha);
 
-const Y = "(f => (x => f(x x))(x => f(x x)))";
-const pred = "(n.f.x. n(g.h. h(g f))(u. x)(u. u))";
-const str_mul = "(a.b.f.x. a(b f) x)";
-const str_false = "(x.y. y)";
-const str_true = "(x.y. x)";
-const iszero = `(n. n(x. ${str_false}) ${str_true})`;
-const sone = `(f x . f x)`;
-const szero = `(f x . x)`;
-const stwo = `(f x . f (f x))`;
-const sthree = `(f x . f (f (f x)))`;
-const sfour = `(f x . f (f (f (f x))))`;
-const factorial4 = parseTerm(
-  `${Y}(f x . ${iszero} x  ${sone} (${str_mul} x (f (${pred} x)) ) )${sfour}`,
-);
-
 const identitySquared = tapply(I, I);
 const examples: { name: string; term: Term }[] = [
   { name: "Hello", term: parseTerm("(x . h e x x o)(l)") },
@@ -152,8 +138,6 @@ const examples: { name: string; term: Term }[] = [
   { name: "infinite growth", term: bigOmegaReverse },
   { name: "infinite growth 2", term: bigOmega },
   { name: "renaming", term: alphaClosed },
-  { name: "succ(0)", term: tapply(succ, zero) },
-  { name: "1 + 1", term: tapply(tapply(add, one), one) },
   { name: "2 + 2", term: tapply(tapply(add, two), two) },
   { name: "3 * 2", term: threeTimesTwo },
   { name: "3 ^ 3", term: threeToThree },

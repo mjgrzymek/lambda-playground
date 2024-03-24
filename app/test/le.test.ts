@@ -8,13 +8,15 @@ import {
   termElim,
   tlambda,
   tvar,
-} from "./utils/term";
+  getNormalForm,
+  factorial4,
+} from "../utils/term";
 
-import { termToString } from "./components/ShowTerm";
-import { parseTerm } from "./utils/parsing";
+import { termToString } from "../components/ShowTerm";
+import { parseTerm } from "../utils/parsing";
 
 import _ from "lodash";
-import { Lang, langData } from "./utils/languages";
+import { Lang, langData } from "../utils/languages";
 
 describe("splitNumberSubscript", () => {
   test("split unsplit is identity", () => {
@@ -118,4 +120,12 @@ test("beta normal is unique", () => {
       normalForms.forEach((nf) => expect(nf).toEqual(normalForms[0]));
     }
   });
+});
+
+test("factorial 4 test", () => {
+  const time = performance.now();
+  const result = getNormalForm(factorial4);
+  const elapsed = performance.now() - time;
+  console.log(termToString(result, langData[Lang.Tex]));
+  console.log(elapsed);
 });
