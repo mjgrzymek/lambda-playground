@@ -14,10 +14,7 @@ export const tapply = (func: Term, arg: Term): applyTerm => ({
   func,
   arg,
 });
-type Marker = { usedBody?: true; usedArgument?: true }; //"used-body" | "used-argument";
-export type Term = (varTerm | lambdaTerm | applyTerm) & {
-  marker?: Marker | undefined;
-};
+export type Term = varTerm | lambdaTerm | applyTerm;
 export const termElim = <T>(
   t: Term,
   fv: (t: varTerm) => T,
@@ -77,7 +74,6 @@ function reduce(t: Term): Term {
     const rw = rewrite(t.func.body, t.func.variable, markedArg);
     return {
       ...rw,
-      marker: { ...rw.marker, usedBody: true } as const,
     };
   }
 }

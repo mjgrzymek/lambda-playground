@@ -8,7 +8,6 @@ import {
   termElim,
   tlambda,
   tvar,
-  cleanTerm,
 } from "./utils/term";
 
 import { termToString } from "./components/ShowTerm";
@@ -112,9 +111,9 @@ test("xD", () => {
 
 test("beta normal is unique", () => {
   testTerms.forEach((t) => {
-    const normalForms = naiveBetaNormalForms(t, 5)
-      .map((nf) => alphaNormalizeTerm(nf))
-      .map(cleanTerm);
+    const normalForms = naiveBetaNormalForms(t, 5).map((nf) =>
+      alphaNormalizeTerm(nf),
+    );
     if (normalForms.length > 1) {
       normalForms.forEach((nf) => expect(nf).toEqual(normalForms[0]));
     }

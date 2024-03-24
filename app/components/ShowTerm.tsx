@@ -96,11 +96,10 @@ type DisplayInfo = {
 };
 function toDisplay(
   t: Term,
-  context: (
+  context:
     | { type: "lambda"; onClick?: undefined }
     | { type: "redex"; onClick: () => void }
-    | { type: "other"; onClick?: undefined }
-  ) & { used?: boolean },
+    | { type: "other"; onClick?: undefined },
   displayInfo: DisplayInfo,
   currentPath: string,
 ): React.ReactNode {
@@ -133,7 +132,7 @@ function toDisplay(
       const hideLambda = context.type === "lambda" && langInfo.multiArg;
       const hideConnector = t.body.type === "lambda" && langInfo.multiArg;
 
-      const used = context.used;
+      const used = currentPath === displayInfo.targetPath + "l";
 
       const lambdaIsHandle = langInfo.abstractionHandle === "lambda-symbol";
       const connectorIsHandle = langInfo.abstractionHandle === "connector";
@@ -215,7 +214,6 @@ function toDisplay(
               t.func,
               {
                 type: "other",
-                used: currentPath === displayInfo.targetPath,
               },
               displayInfo,
               currentPath + "l",
@@ -265,15 +263,17 @@ function toDisplay(
     }
     return result;
   }
+  const usedBody = false; // TODO
+  const usedArgument = false;
   return (
     <span
       className={`result-container-outer
-        ${t.marker?.usedBody ? " outline-2 outline-offset-4 outline-rose-500  [.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline" : ""}
+        ${usedBody ? " outline-2 outline-offset-4 outline-rose-500  [.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline" : ""}
         `}
     >
       <span
         className={`result-container-inner 
-          ${t.marker?.usedArgument ? "outline-2 outline-sky-600 [.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline " : ""}
+          ${usedArgument ? "outline-2 outline-sky-600 [.output-row-container:has(.used-handle:hover)+.output-row-container_&]:outline " : ""}
           `}
       >
         {result}

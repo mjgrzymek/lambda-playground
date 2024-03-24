@@ -21,6 +21,7 @@ import {
   normalStrategyRedex,
   normalNormalization,
   NormalizationStep,
+  isBetaNormal,
 } from "./utils/term";
 
 import { Style, Lang, langData } from "./utils/languages";
@@ -174,6 +175,7 @@ export default function Home() {
   const [activeTerm, setActiveTerm] = useState<Term>(() =>
     parseTerm(inputTerm),
   );
+  const done = useMemo(() => isBetaNormal(activeTerm), [activeTerm]);
   const [lang, setLang] = useState<Lang>(Lang.Python);
   const [auto, setAuto] = useState(false);
 
@@ -345,11 +347,17 @@ export default function Home() {
               placeholder={inputPlaceholder}
             />
             <Button onClick={reset}>Reset</Button>
-            <Button className="flex gap-1" onClick={toggleAuto}>
+            <Button
+              className="flex w-20 gap-1"
+              onClick={toggleAuto}
+              disabled={done}
+            >
               {auto ? (
                 <>
                   <StopIcon /> Stop
                 </>
+              ) : done ? (
+                <> Done </>
               ) : (
                 <>
                   <PlayIcon /> Auto
