@@ -190,8 +190,8 @@ export default function Home() {
   const rowVirtualizer = useVirtualizer({
     count: terms.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 100, // ??
-    overscan: 0,
+    estimateSize: () => 900, // ??
+    overscan: 1,
   });
 
   const parsedInputTerm = useMemo(() => {
