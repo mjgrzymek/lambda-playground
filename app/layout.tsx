@@ -12,7 +12,7 @@ const inconsolata = Inconsolata({
 });
 
 const latinModernMath = localFont({
-  src: "./latinmodern-math.otf",
+  src: "./LMMath/latinmodern-math.otf",
   display: "swap",
   variable: "--font-latin-modern-math",
 });
