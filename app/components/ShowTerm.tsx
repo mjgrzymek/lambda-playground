@@ -93,6 +93,7 @@ type DisplayInfo = {
   targetPath?: string | null;
   interactive?: boolean;
   returnString: boolean;
+  reducedFuncPath?: string | null;
 };
 function toDisplay(
   t: Term,
@@ -263,7 +264,7 @@ function toDisplay(
     }
     return result;
   }
-  const usedBody = false; // TODO
+  const usedBody = displayInfo.reducedFuncPath == currentPath; // TODO
   const usedArgument = false;
   return (
     <span

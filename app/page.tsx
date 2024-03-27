@@ -212,7 +212,7 @@ export default function Home() {
       const reduced = reduceAt(active.term, targetPath);
       const newTermList = [...termList];
       newTermList[newTermList.length - 1]!.targetPath = targetPath;
-      newTermList.push({ term: reduced });
+      newTermList.push({ term: reduced, reducedFuncPath: targetPath });
       return newTermList as NonEmptyList<TermInfo>;
     });
   }, []);
@@ -388,7 +388,8 @@ export default function Home() {
               }}
             >
               {items.map((virtualRow) => {
-                const { term, targetPath } = termList[virtualRow.index]!;
+                const { term, targetPath, reducedFuncPath, reducedBodyPaths } =
+                  termList[virtualRow.index]!;
                 const interactive =
                   !auto && virtualRow.index === termList.length - 1;
                 return (
@@ -407,6 +408,7 @@ export default function Home() {
                         langInfo,
                         pushReduce,
                         targetPath: targetPath ?? null,
+                        reducedFuncPath: reducedFuncPath ?? null,
                         interactive: !auto && interactive,
                         returnString: false,
                       }}
