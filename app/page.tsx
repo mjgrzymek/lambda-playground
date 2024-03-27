@@ -15,14 +15,11 @@ import {
   tapply,
   tvar,
   tlambda,
-  reduceAt,
-  splitNumberSubscript,
   naiveBetaNormalize,
-  normalStrategyRedex,
   normalNormalization,
-  NormalizationStep,
   isBetaNormal,
   factorial4,
+  reduceAtInfo,
 } from "./utils/term";
 
 import { Style, Lang, langData } from "./utils/languages";
@@ -154,7 +151,7 @@ const examples: { name: string; term: Term }[] = [
 
 export default function Home() {
   const [inputTerm, setInputTerm] = useState("(x => x)y");
-  const [termList, setTermList] = useState<NonEmptyList<TermInfo>>([
+  const [termList, setTermList] = useState<NonEmptyList<TermInfo>>(() => [
     { term: parseTerm(inputTerm) },
   ]);
   console.assert(termList.length > 0, "empty term list");
@@ -209,10 +206,11 @@ export default function Home() {
   const pushReduce = useCallback((targetPath: string) => {
     setTermList((termList) => {
       const active = termList[termList.length - 1]!;
-      const reduced = reduceAt(active.term, targetPath);
+      const info: TermInfo = reduceAtInfo(active.term, targetPath);
       const newTermList = [...termList];
       newTermList[newTermList.length - 1]!.targetPath = targetPath;
-      newTermList.push({ term: reduced, reducedFuncPath: targetPath });
+      info.reducedFuncPath = targetPath;
+      newTermList.push(info);
       return newTermList as NonEmptyList<TermInfo>;
     });
   }, []);
@@ -223,7 +221,7 @@ export default function Home() {
       setTermList([{ term: parsedInputTerm }]);
       setInputTerm(termToString(parsedInputTerm, langData[lang]));
     } else {
-      setTermList([termList[0]]);
+      setTermList([{ term: termList[0].term }]);
     }
   }
 
@@ -409,6 +407,7 @@ export default function Home() {
                         pushReduce,
                         targetPath: targetPath ?? null,
                         reducedFuncPath: reducedFuncPath ?? null,
+                        reducedBodyPaths: reducedBodyPaths ?? new Set(),
                         interactive: !auto && interactive,
                         returnString: false,
                       }}

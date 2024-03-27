@@ -51,14 +51,33 @@ const rewrite_ = (
   from: vName,
   to: Term,
   toFreeVars: Set<vName>,
+  currentPath: string,
+  pathsOutput?: Set<string>,
 ): Term => {
   switch (t.type) {
-    case "variable":
-      return t.name === from ? to : t;
+    case "variable": {
+      if (t.name === from) {
+        if (pathsOutput) {
+          pathsOutput.add(currentPath);
+        }
+        return to;
+      }
+      return t;
+    }
     case "lambda": {
       if (t.variable === from) return t;
       if (!toFreeVars.has(t.variable)) {
-        return tlambda(t.variable, rewrite_(t.body, from, to, toFreeVars));
+        return tlambda(
+          t.variable,
+          rewrite_(
+            t.body,
+            from,
+            to,
+            toFreeVars,
+            currentPath + "d",
+            pathsOutput,
+          ),
+        );
       }
       const newArg = newVar(t.variable, [
         ...freeVariables(to),
@@ -67,35 +86,58 @@ const rewrite_ = (
       return tlambda(
         newArg,
         rewrite_(
-          rewrite_(t.body, t.variable, tvar(newArg), new Set([newArg])),
+          rewrite_(
+            t.body,
+            t.variable,
+            tvar(newArg),
+            new Set([newArg]),
+            currentPath + "d",
+          ),
           from,
           to,
           toFreeVars,
+          currentPath + "d",
+          pathsOutput,
         ),
       );
     }
     case "apply":
       return tapply(
-        rewrite_(t.func, from, to, toFreeVars),
-        rewrite_(t.arg, from, to, toFreeVars),
+        rewrite_(t.func, from, to, toFreeVars, currentPath + "l", pathsOutput),
+        rewrite_(t.arg, from, to, toFreeVars, currentPath + "r", pathsOutput),
       );
   }
 };
 
-function rewrite(t: Term, from: vName, to: Term): Term {
+function rewrite(
+  t: Term,
+  from: vName,
+  to: Term,
+  currentPath?: string,
+  pathsOutput?: Set<string>,
+): Term {
   const toFreeVars = new Set(freeVariables(to));
-  return rewrite_(t, from, to, toFreeVars);
+  return rewrite_(t, from, to, toFreeVars, currentPath ?? "", pathsOutput);
 }
 
 const isRedex = (t: Term): boolean =>
   t.type === "apply" && t.func.type === "lambda";
 
-function reduce(t: Term): Term {
+function reduce(
+  t: Term,
+  currentPath?: string,
+  pathsOutput?: Set<string>,
+): Term {
   if (t.type !== "apply" || t.func.type !== "lambda") {
     throw new Error("reduce at invalid point");
   } else {
-    //TODO here was marker
-    const rw = rewrite(t.func.body, t.func.variable, t.arg);
+    const rw = rewrite(
+      t.func.body,
+      t.func.variable,
+      t.arg,
+      currentPath,
+      pathsOutput,
+    );
     return rw;
   }
 }
@@ -104,6 +146,7 @@ export function reduceAt(
   t: Term,
   targetPath: string,
   currentPath: string = "",
+  pathsOutput?: Set<string>,
 ): Term {
   if (!targetPath.startsWith(currentPath)) {
     return t;
@@ -118,12 +161,18 @@ export function reduceAt(
       );
     case "apply":
       return currentPath === targetPath
-        ? reduce(t)
+        ? reduce(t, currentPath, pathsOutput)
         : tapply(
             reduceAt(t.func, targetPath, currentPath + "l"),
             reduceAt(t.arg, targetPath, currentPath + "r"),
           );
   }
+}
+
+export function reduceAtInfo(t: Term, targetPath: string) {
+  const pathsOutput = new Set<string>();
+  const result = reduceAt(t, targetPath, "", pathsOutput);
+  return { term: result, reducedBodyPaths: pathsOutput };
 }
 
 export const normalStrategyRedex = (

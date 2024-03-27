@@ -94,6 +94,7 @@ type DisplayInfo = {
   interactive?: boolean;
   returnString: boolean;
   reducedFuncPath?: string | null;
+  reducedBodyPaths?: Set<string>;
 };
 function toDisplay(
   t: Term,
@@ -264,8 +265,8 @@ function toDisplay(
     }
     return result;
   }
-  const usedBody = displayInfo.reducedFuncPath == currentPath; // TODO
-  const usedArgument = false;
+  const usedBody = displayInfo.reducedFuncPath == currentPath;
+  const usedArgument = displayInfo.reducedBodyPaths?.has(currentPath) ?? false;
   return (
     <span
       className={`result-container-outer
