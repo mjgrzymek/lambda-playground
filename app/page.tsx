@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ShowTerm, termToString } from "./components/ShowTerm";
+import { NonEmptyList, TermInfo } from "./utils/otherTypes";
 
 /*
 classes for rules:
@@ -153,13 +154,12 @@ const examples: { name: string; term: Term }[] = [
 
 export default function Home() {
   const [inputTerm, setInputTerm] = useState("(x => x)y");
-  const [history, setHistory] = useState<{ term: Term; targetPath: string }[]>(
-    [],
-  );
-  const [activeTerm, setActiveTerm] = useState<Term>(() =>
-    parseTerm(inputTerm),
-  );
-  const done = useMemo(() => isBetaNormal(activeTerm), [activeTerm]);
+  const [termList, setTermList] = useState<NonEmptyList<TermInfo>>([
+    { term: parseTerm(inputTerm) },
+  ]);
+  console.assert(termList.length > 0, "empty term list");
+  const active = termList[termList.length - 1]!;
+  const done = useMemo(() => isBetaNormal(active.term), [active]);
   const [lang, setLang] = useState<Lang>(Lang.Python);
   const [auto, setAuto] = useState(false);
 
@@ -173,22 +173,10 @@ export default function Home() {
   );
 
   const langInfo = langData[lang];
-  const terms: { t: Term; targetPath: string | null; interactive: boolean }[] =
-    useMemo(
-      () => [
-        ...history.map(({ term, targetPath }) => ({
-          t: term,
-          targetPath,
-          interactive: false,
-        })),
-        { t: activeTerm, targetPath: null, interactive: true },
-      ],
-      [activeTerm, history],
-    );
 
   const parentRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
-    count: terms.length,
+    count: termList.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 900, // ??
     overscan: 1,
@@ -218,28 +206,30 @@ export default function Home() {
       launchAuto();
     }
   }
-  const pushReduce = useCallback(
-    (targetPath: string) => {
-      const reduced = reduceAt(activeTerm, targetPath);
-      setHistory((history) => [...history, { term: activeTerm, targetPath }]);
-      setActiveTerm(reduced);
-    },
-    [activeTerm],
-  );
+  const pushReduce = useCallback((targetPath: string) => {
+    setTermList((termList) => {
+      const active = termList[termList.length - 1]!;
+      const reduced = reduceAt(active.term, targetPath);
+      const newTermList = [...termList];
+      newTermList[newTermList.length - 1]!.targetPath = targetPath;
+      newTermList.push({ term: reduced });
+      return newTermList as NonEmptyList<TermInfo>;
+    });
+  }, []);
 
   function reset() {
-    setHistory([]);
     setAuto(false);
     if (parsedInputTerm !== null) {
-      setActiveTerm(parsedInputTerm);
+      setTermList([{ term: parsedInputTerm }]);
       setInputTerm(termToString(parsedInputTerm, langData[lang]));
+    } else {
+      setTermList([termList[0]]);
     }
   }
 
   function changeFocusedTerm(term: Term) {
     setInputTerm(termToString(term, langData[lang]));
-    setHistory([]);
-    setActiveTerm(term);
+    setTermList([{ term }]);
     setAuto(false);
   }
 
@@ -254,24 +244,23 @@ export default function Home() {
     autoCounterRef.current += 1;
     const myCounter = autoCounterRef.current;
 
-    const term = activeTerm;
+    const termListBeforeWorker = termList;
 
     const worker = new Worker(
       new URL("./utils/normalizationWorker.ts", import.meta.url),
       { type: "module" },
     );
-    let result: null | NormalizationStep[] = null;
+    let result: null | NonEmptyList<TermInfo> = null;
     worker.onmessage = (event: any) => {
       result = event.data;
     };
-    worker.postMessage(term);
+    worker.postMessage(active.term);
     const normalizationTimeout = 3 * 1000;
     setTimeout(() => {
       worker.terminate();
     }, normalizationTimeout);
 
-    let prevTerm = term;
-    for (const { reduced, targetPath } of normalNormalization(activeTerm)) {
+    for (const { reduced, targetPath } of normalNormalization(active.term)) {
       // we want to go on the macrotask queue so React can ever render
       // at the beginning to prevent double call to launchAuto from bypassing it
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -282,29 +271,28 @@ export default function Home() {
       }
 
       if (result !== null) {
-        result = result as NormalizationStep[];
-        const last = result.pop()!.reduced;
-        setActiveTerm(last);
-        setHistory(
-          result.map(({ reduced, targetPath }) => ({
-            term: reduced,
-            targetPath,
-          })),
-        );
+        result = result as NonEmptyList<TermInfo>;
+        setTermList([
+          ...termListBeforeWorker.slice(0, -1),
+          ...result,
+        ] as NonEmptyList<TermInfo>);
         break;
       }
-      let prevTerm2 = prevTerm; // we love closures
-      setHistory((history) => [...history, { term: prevTerm2, targetPath }]);
-      setActiveTerm(reduced);
-      prevTerm = reduced;
+
+      setTermList((termList) => {
+        const newTermList = [...termList];
+        newTermList[newTermList.length - 1]!.targetPath = targetPath;
+        newTermList.push({ term: reduced });
+        return newTermList as NonEmptyList<TermInfo>;
+      });
     }
     worker.terminate();
     setAuto(false);
   }
 
   useEffect(() => {
-    rowVirtualizer.scrollToIndex(terms.length - 1);
-  }, [terms.length, rowVirtualizer]);
+    rowVirtualizer.scrollToIndex(termList.length - 1);
+  }, [termList.length, rowVirtualizer]);
 
   const items = rowVirtualizer.getVirtualItems();
 
@@ -400,7 +388,9 @@ export default function Home() {
               }}
             >
               {items.map((virtualRow) => {
-                const { t, interactive, targetPath } = terms[virtualRow.index]!;
+                const { term, targetPath } = termList[virtualRow.index]!;
+                const interactive =
+                  !auto && virtualRow.index === termList.length - 1;
                 return (
                   <div
                     key={virtualRow.key}
@@ -412,11 +402,11 @@ export default function Home() {
                       {virtualRow.index}.
                     </div>
                     <ShowTerm
-                      t={t}
+                      t={term}
                       stuff={{
                         langInfo,
                         pushReduce,
-                        targetPath,
+                        targetPath: targetPath ?? null,
                         interactive: !auto && interactive,
                         returnString: false,
                       }}
