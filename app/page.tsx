@@ -311,6 +311,7 @@ export default function Home() {
         <div className="flex w-full items-center justify-center ">
           <div className="flex flex-1 justify-center gap-2">
             <Input
+              name="inputTerm"
               type="text"
               className={` font-mono ${parseError ? "ring-2 ring-red-600" : ""} w-96`}
               value={inputTerm}

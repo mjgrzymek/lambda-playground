@@ -1,3 +1,4 @@
+import path from "path";
 import { parseTerm } from "./parsing";
 
 type vName = string;
@@ -157,14 +158,14 @@ export function reduceAt(
     case "lambda":
       return tlambda(
         t.variable,
-        reduceAt(t.body, targetPath, currentPath + "d"),
+        reduceAt(t.body, targetPath, currentPath + "d", pathsOutput),
       );
     case "apply":
       return currentPath === targetPath
         ? reduce(t, currentPath, pathsOutput)
         : tapply(
-            reduceAt(t.func, targetPath, currentPath + "l"),
-            reduceAt(t.arg, targetPath, currentPath + "r"),
+            reduceAt(t.func, targetPath, currentPath + "l", pathsOutput),
+            reduceAt(t.arg, targetPath, currentPath + "r", pathsOutput),
           );
   }
 }
