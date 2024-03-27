@@ -13,6 +13,7 @@ export enum Lang {
 
 export type LangInfo = {
   lambdaSymbol: string;
+  stringLambdaSymbol: string;
   connector: string;
   multiArg: boolean;
   style: Style;
@@ -26,15 +27,17 @@ export const langData: {
 } = {
   [Lang.Python]: {
     lambdaSymbol: "lambda ",
+    stringLambdaSymbol: "lambda ",
     connector: ": ",
     multiArg: false,
     style: Style.Code,
-    image: "/python-logo-only.png",
+    image: "/python-square-small.png",
     parenthesizeArg: true,
     abstractionHandle: "lambda-symbol",
   },
   [Lang.JavaScript]: {
     lambdaSymbol: "",
+    stringLambdaSymbol: "",
     connector: " => ",
     multiArg: false,
     style: Style.Code,
@@ -44,10 +47,11 @@ export const langData: {
   },
   [Lang.Tex]: {
     lambdaSymbol: mathItalicSymbolLambda,
+    stringLambdaSymbol: "\\",
     connector: ".",
     multiArg: true,
     style: Style.Math,
-    image: "/TeX_logo.svg.png",
+    image: "/tex-square-white.png",
     parenthesizeArg: false,
     abstractionHandle: "lambda-symbol",
   },

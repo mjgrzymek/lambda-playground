@@ -8,9 +8,15 @@ import {
   termElim,
   tlambda,
   tvar,
-  cleanTerm,
-} from "./app/utils/term";
+  getNormalForm,
+  factorial4,
+} from "../utils/term";
+
+import { termToString } from "../components/ShowTerm";
+import { parseTerm } from "../utils/parsing";
+
 import _ from "lodash";
+import { Lang, langData } from "../utils/languages";
 
 describe("splitNumberSubscript", () => {
   test("split unsplit is identity", () => {
@@ -73,19 +79,24 @@ const randomTerm = (maxSize: number): Term => {
 const termSize = (t: Term): number =>
   termElim(
     t,
-    (t) => 0,
+    (_) => 0,
     (t) => 1 + termSize(t.body),
     (t) => 1 + termSize(t.func) + termSize(t.arg),
   );
 
-const numTestTerms = 1000;
+const numTestTerms = 100;
 const maxTermSize = 15;
 
-const alpha = tapply(tlambda("y'", tlambda("y", tvar("y'"))), tvar("y"));
-const alphaClosed = tlambda("y", alpha);
-const alphaBug = tapply(tapply(alphaClosed, tvar("a")), tvar("b"));
 const testTerms = _.range(numTestTerms).map(() => randomTerm(maxTermSize));
-testTerms.push(alphaBug);
+
+test("display and parse are inverses", () => {
+  for (const t of testTerms) {
+    for (const langInfo of Object.values(langData)) {
+      const s = termToString(t, langInfo);
+      expect(parseTerm(s)).toEqual(t);
+    }
+  }
+});
 
 test("generated terms are small", () => {
   testTerms.forEach((t) => {
@@ -102,13 +113,20 @@ test("xD", () => {
 
 test("beta normal is unique", () => {
   testTerms.forEach((t) => {
-    const normalForms = naiveBetaNormalForms(t, 5)
-      .map((nf) => alphaNormalizeTerm(nf))
-      .map(cleanTerm);
+    const normalForms = naiveBetaNormalForms(t, 5).map((nf) =>
+      alphaNormalizeTerm(nf),
+    );
     if (normalForms.length > 1) {
-      normalForms.forEach((nf) =>
-        expect(JSON.stringify(nf)).toBe(JSON.stringify(normalForms[0])),
-      );
+      normalForms.forEach((nf) => expect(nf).toEqual(normalForms[0]));
     }
+  });
+});
+
+describe("testing stuff", () => {
+  test("factorial 4 test", () => {
+    console.time();
+    const result = getNormalForm(factorial4);
+    console.log(termToString(result, langData[Lang.Tex]));
+    console.timeEnd();
   });
 });

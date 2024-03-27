@@ -18,6 +18,20 @@
         "name": "next"
       }
     ],
+
+    //pedantic options
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedParameters": true,
+
+    "noUnusedLocals": false,
+
     "paths": {
       "@/*": ["./*"]
     }
