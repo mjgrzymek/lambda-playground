@@ -252,13 +252,15 @@ export default function Home() {
     worker.onmessage = (event: any) => {
       result = event.data;
     };
-    worker.postMessage(active.term);
+    worker.postMessage(active);
     const normalizationTimeout = 3 * 1000;
     setTimeout(() => {
       worker.terminate();
     }, normalizationTimeout);
 
-    for (const { reduced, targetPath } of normalNormalization(active.term)) {
+    for (const { reduced, targetPath, reducedBodyPaths } of normalNormalization(
+      active.term,
+    )) {
       // we want to go on the macrotask queue so React can ever render
       // at the beginning to prevent double call to launchAuto from bypassing it
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -280,7 +282,11 @@ export default function Home() {
       setTermList((termList) => {
         const newTermList = [...termList];
         newTermList[newTermList.length - 1]!.targetPath = targetPath;
-        newTermList.push({ term: reduced });
+        newTermList.push({
+          term: reduced,
+          reducedFuncPath: targetPath,
+          reducedBodyPaths,
+        });
         return newTermList as NonEmptyList<TermInfo>;
       });
     }

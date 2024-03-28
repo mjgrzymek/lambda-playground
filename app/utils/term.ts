@@ -282,6 +282,7 @@ export function getNormalForm(t: Term) {
 export type NormalizationStep = {
   reduced: Term;
   targetPath: string;
+  reducedBodyPaths: Set<string>;
 };
 
 export function* normalNormalization(term: Term): Generator<NormalizationStep> {
@@ -290,8 +291,12 @@ export function* normalNormalization(term: Term): Generator<NormalizationStep> {
     if (targetPath === null) {
       return;
     }
-    const reduced = reduceAt(term, targetPath);
-    yield { reduced, targetPath };
+    const { term: reduced, reducedBodyPaths } = reduceAtInfo(term, targetPath);
+    yield {
+      reduced,
+      targetPath,
+      reducedBodyPaths,
+    };
 
     term = reduced;
   }
