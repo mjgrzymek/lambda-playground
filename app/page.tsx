@@ -300,19 +300,39 @@ export default function Home() {
 
   const items = rowVirtualizer.getVirtualItems();
 
+  const [docs, setDocs] = useState(false);
+
   return (
     <div className="flex h-screen">
-      <nav className="flex w-64 flex-col justify-center bg-zinc-800">
-        {examples.map(({ name, term }) => (
-          <button
-            key={name}
-            onClick={() => changeFocusedTerm(term)}
-            className="rounded-md p-2 hover:bg-gray-500"
-          >
-            {name}
-          </button>
-        ))}
+      <nav className="w-1/5 bg-zinc-800">
+        {docs ? (
+          <div className="flex h-screen flex-col items-center justify-center">
+            {examples.map(({ name, term }) => (
+              <button
+                key={name}
+                onClick={() => changeFocusedTerm(term)}
+                className="rounded-md p-2 hover:bg-gray-500"
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="prose prose-zinc prose-invert p-4">
+            <h1> Lambda Calculus </h1>
+            <p>
+              hello in this stuff we do a little stuff lorem ipsum dolor sit
+              amet
+            </p>
+            <p> hello </p>
+            <p> hello </p>
+            <p>
+              so we have <code>2+2 = 4</code> lmao
+            </p>
+          </div>
+        )}
       </nav>
+      <button onClick={() => setDocs(!docs)}>hii</button>
       <main className="flex flex-1 flex-col items-center gap-4 p-12 text-xl">
         <div className="flex w-full items-center justify-center ">
           <div className="flex flex-1 justify-center gap-2">
