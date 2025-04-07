@@ -364,7 +364,7 @@ export default function Home() {
                   width={70}
                   height={70}
                   priority={true}
-                  className="h-full w-auto"
+                  className="h-full w-auto p-2"
                 />
               </ToggleGroupItem>
             ))}
